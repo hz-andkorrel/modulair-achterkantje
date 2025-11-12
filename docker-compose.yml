@@ -24,12 +24,19 @@ services:
   # The broker service is built from the Dockerfile in the ./broker directory.
   # It connects to both the private and public networks.
   # It depends on the event bus service to ensure it starts after the event bus is up.
-  broker:
-    build: ./broker
-    container_name: hub_broker
+  publisher:
+    build: ./eventbus/publish
+    container_name: hub_publisher
     networks:
       - private_network
-      - public_network
+    depends_on:
+      - eventbus
+
+  listener:
+    build: ./eventbus/listen
+    container_name: hub_listener
+    networks:
+      - private_network
     depends_on:
       - eventbus
 

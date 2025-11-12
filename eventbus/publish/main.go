@@ -24,3 +24,7 @@ func main() {
 		fmt.Println("Message pushed successfully")
 	}
 }
+
+func processMessage(message string) {
+	fmt.Printf("Processing message: %s\n", message)
+}

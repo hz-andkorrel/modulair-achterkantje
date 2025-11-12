@@ -1,4 +1,4 @@
-module hub/broker
+module hub/publisher
 
 go 1.25.0
 
