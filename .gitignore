@@ -1,2 +1,2 @@
-# Build artifacts
-source/modulair-achterkantje
+# The data directory contains user and application data
+data/

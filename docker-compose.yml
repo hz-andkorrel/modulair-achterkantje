@@ -1,0 +1,29 @@
+services:
+  # The event bus service is created using Redis
+  # Data is saved every 60 seconds if at least 1 change has occurred.
+  # Within the private network, port 6379 is exposed for communication with services.
+  # The host and the internet cannot access this service directly.
+  # A health check is implemented to ensure the Redis server is operational.
+  eventbus:
+    image: redis:latest
+    container_name: hub_bus
+    command: redis-server --save 60 1 --loglevel warning 
+    networks:
+      - private_network
+    expose:
+      - "6379"
+    volumes:
+      - ~/data/redis:/data
+    restart: always
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+
+networks:
+  private_network:
+    driver: bridge
+  public_network:
+    driver: host
