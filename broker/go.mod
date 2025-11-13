@@ -1,3 +1,3 @@
-module github.com/hz-andkorrel/modulair-achterkantje/broker
+module broker
 
 go 1.20
