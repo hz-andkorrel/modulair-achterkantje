@@ -1,15 +1,18 @@
 package main
 
 import (
+	"context"
 	"log"
+	"time"
 
 	"github.com/gin-gonic/gin"
 
 	"broker/internal/config"
+	"broker/internal/database"
 	"broker/internal/handlers"
-	"broker/internal/plugins"
 	"broker/internal/jwt"
 	"broker/internal/middleware"
+	"broker/internal/plugins"
 )
 
 func main() {
@@ -20,6 +23,29 @@ func main() {
 	jwtManager, err := jwt.NewManager(cfg.JWTExpiry, cfg.JWTIssuer)
 	if err != nil {
 		log.Fatalf("Failed to create JWT manager: %v", err)
+	}
+
+	// Initialize database if configured
+	var db *database.DB
+	if cfg.DatabaseURL != "" {
+		db, err = database.NewDB(cfg.DatabaseURL)
+		if err != nil {
+			log.Fatalf("Failed to connect to database: %v", err)
+		}
+		defer db.Close()
+
+		// Initialize database schema
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		if err := db.InitSchema(ctx); err != nil {
+			log.Fatalf("Failed to initialize database schema: %v", err)
+		}
+
+		// Set database on JWT manager for token persistence
+		jwtManager.SetDB(db)
+		log.Println("Database connected and initialized")
+	} else {
+		log.Println("Database disabled - tokens will not be persisted")
 	}
 
 	// Initialize Gin router

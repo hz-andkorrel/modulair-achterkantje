@@ -1,6 +1,7 @@
 package jwt
 
 import (
+	"context"
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/x509"
@@ -19,6 +20,13 @@ type Manager struct {
 	public  *rsa.PublicKey
 	ttl     time.Duration
 	issuer  string
+	db      TokenStore // Optional database for token persistence
+}
+
+// TokenStore defines the interface for token storage
+type TokenStore interface {
+	SaveToken(ctx context.Context, token, subject string, issuedAt, expiresAt time.Time) error
+	IsTokenRevoked(ctx context.Context, token string) (bool, error)
 }
 
 func NewManager(ttl time.Duration, issuer string) (*Manager, error) {
@@ -29,6 +37,11 @@ func NewManager(ttl time.Duration, issuer string) (*Manager, error) {
 	}
 	m := &Manager{private: priv, public: &priv.PublicKey, ttl: ttl, issuer: issuer}
 	return m, nil
+}
+
+// SetDB sets the token store for persistence
+func (m *Manager) SetDB(db TokenStore) {
+	m.db = db
 }
 
 func (m *Manager) GenerateToken(subject string) (string, time.Time, error) {
@@ -45,6 +58,16 @@ func (m *Manager) GenerateToken(subject string) (string, time.Time, error) {
 	if err != nil {
 		return "", time.Time{}, err
 	}
+	
+	// Save token to database if available
+	if m.db != nil {
+		ctx := context.Background()
+		if err := m.db.SaveToken(ctx, signed, subject, now, exp); err != nil {
+			log.Printf("Warning: failed to save token to database: %v", err)
+			// Don't fail token generation if database save fails
+		}
+	}
+	
 	return signed, exp, nil
 }
 
@@ -61,6 +84,19 @@ func (m *Manager) ParseAndVerify(tokenStr string) (*jwt.RegisteredClaims, error)
 	if claims.ExpiresAt == nil || claims.ExpiresAt.Time.Before(time.Now()) {
 		return nil, errors.New("token expired")
 	}
+	
+	// Check if token has been revoked (if database is available)
+	if m.db != nil {
+		ctx := context.Background()
+		revoked, err := m.db.IsTokenRevoked(ctx, tokenStr)
+		if err != nil {
+			log.Printf("Warning: failed to check token revocation: %v", err)
+			// Continue with validation even if database check fails
+		} else if revoked {
+			return nil, errors.New("token has been revoked")
+		}
+	}
+	
 	return &claims, nil
 }
 

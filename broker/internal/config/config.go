@@ -20,6 +20,9 @@ type Config struct {
     
 	// Plugins persistence path (file). If empty, persistence is disabled.
 	PluginsPersistPath string
+	
+	// Database settings
+	DatabaseURL string
 }
 
 // LoadConfig loads configuration from environment variables with sensible defaults
@@ -30,6 +33,7 @@ func LoadConfig() *Config {
 		JWTIssuer:  getEnv("JWT_ISSUER", "broker-service"),
 		PluginsPersistPath: getEnv("PLUGINS_PERSIST_PATH", "data/plugins.json"),
 		Version:            getEnv("APP_VERSION", "1.0.0"),
+		DatabaseURL:        getEnv("DATABASE_URL", ""),
 	}
 	
 	log.Println("Broker Configuration loaded:")
@@ -37,6 +41,11 @@ func LoadConfig() *Config {
 	log.Printf("  JWT expiry: %v\n", cfg.JWTExpiry)
 	log.Printf("  Plugins persist path: %s\n", cfg.PluginsPersistPath)
 	log.Printf("  Version: %s\n", cfg.Version)
+	if cfg.DatabaseURL != "" {
+		log.Printf("  Database: enabled\n")
+	} else {
+		log.Printf("  Database: disabled (tokens will not be persisted)\n")
+	}
 	
 	return cfg
 }

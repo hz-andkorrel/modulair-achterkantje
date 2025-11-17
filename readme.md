@@ -167,19 +167,101 @@ func RegisterWithBroker() error {
 
 ### Environment Variables
 
+**Server Settings:**
 - `BROKER_PORT`: Service port (default: `8081`)
+- `APP_VERSION`: Application version (default: `1.0.0`)
+
+**JWT Settings:**
 - `JWT_EXPIRY`: Token validity duration (default: `10m`)
 - `JWT_ISSUER`: JWT issuer name (default: `broker-service`)
+
+**Plugin Persistence:**
 - `PLUGINS_PERSIST_PATH`: Plugin storage file path (default: `data/plugins.json`)
-- `APP_VERSION`: Application version (default: `1.0.0`)
+
+**Database Settings:**
+- `DATABASE_URL`: PostgreSQL connection string (optional)
+  - Format: `postgres://username:password@host:port/database?sslmode=disable`
+  - Leave empty to disable token persistence to database
+  - Example: `postgres://broker:broker123@localhost:5432/broker_db?sslmode=disable`
+
+### Database Setup
+
+The broker can persist JWT tokens to PostgreSQL for:
+- Token revocation
+- Audit trail
+- Cross-instance token validation
+- User session management
+
+**1. Start PostgreSQL (using Docker):**
+```bash
+docker-compose up -d postgres
+```
+
+**2. Configure DATABASE_URL:**
+```bash
+export DATABASE_URL="postgres://broker:broker123@localhost:5432/broker_db?sslmode=disable"
+```
+
+**3. Start the broker:**
+The broker will automatically create the required tables on startup.
+
+**Database Schema:**
+- `tokens` table: Stores all issued JWT tokens
+  - `id`: Primary key
+  - `token`: Full JWT token string
+  - `subject`: User identifier
+  - `issued_at`: Token issue timestamp
+  - `expires_at`: Token expiration timestamp
+  - `revoked`: Revocation status
+  - `created_at`: Record creation timestamp
+
+**Manual Migration:**
+If you prefer to run migrations manually:
+```bash
+psql $DATABASE_URL -f migrations/001_create_tokens_table.sql
+psql $DATABASE_URL -f migrations/002_cleanup_function.sql
+```
 
 ## Getting Started
 
-### Start the Broker
+### Option 1: Local Development (without database)
 
 ```bash
 cd broker
 go mod download
+go run main.go
+```
+
+### Option 2: With PostgreSQL Database
+
+**Using Docker Compose:**
+```bash
+# Start both PostgreSQL and broker
+docker-compose up -d
+
+# View logs
+docker-compose logs -f broker
+
+# Stop services
+docker-compose down
+```
+
+**Manual Setup:**
+```bash
+# 1. Start PostgreSQL
+docker run -d \
+  --name broker-postgres \
+  -e POSTGRES_USER=broker \
+  -e POSTGRES_PASSWORD=broker123 \
+  -e POSTGRES_DB=broker_db \
+  -p 5432:5432 \
+  postgres:16-alpine
+
+# 2. Configure environment
+export DATABASE_URL="postgres://broker:broker123@localhost:5432/broker_db?sslmode=disable"
+
+# 3. Start broker
+cd broker
 go run main.go
 ```
 
