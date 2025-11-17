@@ -110,6 +110,81 @@ func (r *Registry) Get(slug string) *models.Plugin {
     return r.plugins[slug]
 }
 
+// Update replaces an existing plugin. Returns an error if the plugin doesn't exist.
+func (r *Registry) Update(p *models.Plugin) error {
+    if p == nil {
+        return errors.New("plugin is nil")
+    }
+    if p.Slug == "" {
+        return errors.New("plugin slug is required")
+    }
+
+    r.mu.Lock()
+    if _, ok := r.plugins[p.Slug]; !ok {
+        r.mu.Unlock()
+        return errors.New("plugin not found")
+    }
+
+    copy := *p
+    r.plugins[p.Slug] = &copy
+
+    snapshot := make([]*models.Plugin, 0, len(r.plugins))
+    for _, v := range r.plugins {
+        snapshot = append(snapshot, v)
+    }
+    persistPath := r.persistPath
+    r.mu.Unlock()
+
+    if persistPath != "" {
+        if err := savePluginsToFile(persistPath, snapshot); err != nil {
+            return err
+        }
+    }
+    return nil
+}
+
+// Delete removes a plugin by slug. Returns an error if the plugin doesn't exist.
+func (r *Registry) Delete(slug string) error {
+    if slug == "" {
+        return errors.New("slug is required")
+    }
+
+    r.mu.Lock()
+    if _, ok := r.plugins[slug]; !ok {
+        r.mu.Unlock()
+        return errors.New("plugin not found")
+    }
+
+    delete(r.plugins, slug)
+
+    snapshot := make([]*models.Plugin, 0, len(r.plugins))
+    for _, v := range r.plugins {
+        snapshot = append(snapshot, v)
+    }
+    persistPath := r.persistPath
+    r.mu.Unlock()
+
+    if persistPath != "" {
+        if err := savePluginsToFile(persistPath, snapshot); err != nil {
+            return err
+        }
+    }
+    return nil
+}
+
+// GetAllBaseRoutes returns a list of all base-api-route values for conflict checking.
+func (r *Registry) GetAllBaseRoutes() []string {
+    r.mu.RLock()
+    defer r.mu.RUnlock()
+    routes := make([]string, 0, len(r.plugins))
+    for _, p := range r.plugins {
+        if p.BaseAPIRoute != "" {
+            routes = append(routes, p.BaseAPIRoute)
+        }
+    }
+    return routes
+}
+
 // loadFromFile replaces the registry contents with the plugins loaded from the file.
 func (r *Registry) loadFromFile(path string) error {
     data, err := os.ReadFile(path)

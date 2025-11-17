@@ -47,6 +47,8 @@ func main() {
 		// Require authentication for plugin registration
 		v1.POST("/route", middleware.RequireAuth(jwtManager), handlers.RegisterPlugin)
 		v1.GET("/routes", handlers.ListPlugins)
+		v1.PUT("/route/:slug", middleware.RequireAuth(jwtManager), handlers.UpdatePlugin)
+		v1.DELETE("/route/:slug", middleware.RequireAuth(jwtManager), handlers.DeletePlugin)
 	}
 
 	// Configure plugin persistence (loads existing registrations if present)
