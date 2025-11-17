@@ -38,6 +38,7 @@ func main() {
 		//   "version": "1.0.2",
 		//   "slug": "kiosk",
 		//   "name": "Kiosk Plug-in",
+		//   "host": "http://localhost:8080",
 		//   "base-api-route": "/kiosk",
 		//   "settings-route": "/kiosk/settings",
 		//   "api-routes": ["/status", "/reset", "/welcome"],
@@ -50,6 +51,10 @@ func main() {
 		v1.PUT("/route/:slug", middleware.RequireAuth(jwtManager), handlers.UpdatePlugin)
 		v1.DELETE("/route/:slug", middleware.RequireAuth(jwtManager), handlers.DeletePlugin)
 	}
+
+	// Catch-all proxy route: forward requests to registered plugins
+	// This must be registered AFTER specific routes to avoid conflicts
+	router.NoRoute(handlers.ProxyToPlugin)
 
 	// Configure plugin persistence (loads existing registrations if present)
 	if cfg.PluginsPersistPath != "" {
