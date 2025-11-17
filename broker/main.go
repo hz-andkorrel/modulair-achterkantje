@@ -64,6 +64,7 @@ func main() {
 		//   "version": "1.0.2",
 		//   "slug": "kiosk",
 		//   "name": "Kiosk Plug-in",
+		//   "category": "user-interface",
 		//   "host": "http://localhost:8080",
 		//   "base-api-route": "/kiosk",
 		//   "settings-route": "/kiosk/settings",
@@ -74,6 +75,8 @@ func main() {
 		// Require authentication for plugin registration
 		v1.POST("/route", middleware.RequireAuth(jwtManager), handlers.RegisterPlugin)
 		v1.GET("/routes", handlers.ListPlugins)
+		v1.GET("/routes/categories", handlers.GetCategories)
+		v1.GET("/routes/category/:category", handlers.ListPluginsByCategory)
 		v1.PUT("/route/:slug", middleware.RequireAuth(jwtManager), handlers.UpdatePlugin)
 		v1.DELETE("/route/:slug", middleware.RequireAuth(jwtManager), handlers.DeletePlugin)
 	}

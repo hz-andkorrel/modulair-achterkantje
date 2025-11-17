@@ -56,6 +56,7 @@ Plugins register themselves with the broker to receive traffic.
   "name": "Hotel Internal API",
   "version": "2.0.0",
   "description": "Gateway for user portal and admin services",
+  "category": "gateway",
   "host": "http://localhost:8080",
   "base-api-route": "/api/v1",
   "settings-route": "/admin/system/stats",
@@ -81,8 +82,48 @@ Plugins register themselves with the broker to receive traffic.
     {
       "slug": "internal-api",
       "name": "Hotel Internal API",
+      "category": "gateway",
       "host": "http://localhost:8080",
       "base-api-route": "/api/v1",
+      "enabled": true
+    }
+  ]
+}
+```
+
+#### `GET /api/v1/routes/categories` - List all plugin categories
+
+**Response:**
+```json
+{
+  "categories": [
+    {
+      "category": "gateway",
+      "count": 1
+    },
+    {
+      "category": "user-interface",
+      "count": 2
+    }
+  ],
+  "total": 2
+}
+```
+
+#### `GET /api/v1/routes/category/:category` - List plugins by category
+
+**Response:**
+```json
+{
+  "category": "user-interface",
+  "count": 2,
+  "plugins": [
+    {
+      "slug": "kiosk",
+      "name": "Kiosk Plug-in",
+      "category": "user-interface",
+      "host": "http://localhost:8080",
+      "base-api-route": "/kiosk",
       "enabled": true
     }
   ]

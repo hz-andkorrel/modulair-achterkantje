@@ -70,6 +70,7 @@ func TestRegisterPlugin_SuccessAndPersistence(t *testing.T) {
         "version": "1.0.2",
         "slug": "kiosk",
         "name": "Kiosk Plug-in",
+        "category": "user-interface",
         "host": "http://localhost:8080",
         "base-api-route": "/kiosk",
         "settings-route": "/kiosk/settings",

@@ -16,6 +16,7 @@ type PluginRegistration struct {
 	Version      string   `json:"version"`
 	Slug         string   `json:"slug"`
 	Name         string   `json:"name"`
+	Category     string   `json:"category,omitempty"`
 	Host         string   `json:"host"`
 	BaseAPIRoute string   `json:"base-api-route"`
 	SettingsRoute string  `json:"settings-route,omitempty"`
@@ -49,6 +50,7 @@ func RegisterWithBroker() error {
 		Version:       "2.0.0",
 		Slug:          "internal-api",
 		Name:          "Hotel Internal API",
+		Category:      "gateway",
 		Host:          fmt.Sprintf("http://%s:%s", serviceHost, servicePort),
 		BaseAPIRoute:  "/api/v1",
 		SettingsRoute: "/admin/system/stats",
