@@ -15,6 +15,26 @@ import (
 	"broker/internal/plugins"
 )
 
+// startCleanupJob runs a background job to clean up expired tokens
+func startCleanupJob(db *database.DB) {
+	ticker := time.NewTicker(1 * time.Hour)
+	defer ticker.Stop()
+
+	log.Println("Started background token cleanup job (runs every hour)")
+
+	for range ticker.C {
+		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		count, err := db.CleanupExpiredTokens(ctx)
+		cancel()
+
+		if err != nil {
+			log.Printf("Token cleanup failed: %v", err)
+		} else if count > 0 {
+			log.Printf("Cleaned up %d expired tokens", count)
+		}
+	}
+}
+
 func main() {
 	// Load configuration
 	cfg := config.LoadConfig()
@@ -44,6 +64,9 @@ func main() {
 		// Set database on JWT manager for token persistence
 		jwtManager.SetDB(db)
 		log.Println("Database connected and initialized")
+
+		// Start background cleanup job for expired tokens
+		go startCleanupJob(db)
 	} else {
 		log.Println("Database disabled - tokens will not be persisted")
 	}
@@ -56,6 +79,20 @@ func main() {
 	{
 		// Status endpoint with optional authentication
 		v1.GET("/status", middleware.OptionalAuth(jwtManager), handlers.GetStatus)
+
+		// Authentication endpoints
+		auth := v1.Group("/auth")
+		{
+			auth.POST("/revoke", middleware.RequireAuth(jwtManager), handlers.RevokeToken(db))
+			auth.POST("/revoke-all", middleware.RequireAuth(jwtManager), handlers.RevokeAllUserTokens(db))
+		}
+
+		// Admin endpoints
+		admin := v1.Group("/admin")
+		admin.Use(middleware.RequireAuth(jwtManager))
+		{
+			admin.POST("/cleanup-tokens", handlers.CleanupExpiredTokens(db))
+		}
 
 		// Plugin registration: plugins call POST /api/v1/route with their metadata
 		// Example body:

@@ -40,7 +40,19 @@ curl -X POST http://localhost:8081/api/v1/auth/login \
   -d '{"username":"admin","password":"admin123"}'
 ```
 
-**2. Check the database:**
+**2. Revoke the current token:**
+```bash
+curl -X POST http://localhost:8081/api/v1/auth/revoke \
+  -H "Authorization: Bearer YOUR_TOKEN"
+```
+
+**3. Revoke all tokens for the current user:**
+```bash
+curl -X POST http://localhost:8081/api/v1/auth/revoke-all \
+  -H "Authorization: Bearer YOUR_TOKEN"
+```
+
+**4. Check the database:**
 ```bash
 # Connect to PostgreSQL
 docker exec -it broker-postgres psql -U broker -d broker_db
@@ -55,8 +67,14 @@ SELECT subject, COUNT(*) FROM tokens GROUP BY subject;
 \q
 ```
 
-**3. Token validation checks revocation:**
-When you use a token, the broker automatically checks if it's been revoked in the database.
+**5. Manual cleanup (admin endpoint):**
+```bash
+curl -X POST http://localhost:8081/api/v1/admin/cleanup-tokens \
+  -H "Authorization: Bearer ADMIN_TOKEN"
+```
+
+**Automatic Cleanup:**
+The broker automatically runs a background job every hour to clean up expired tokens.
 
 ### Environment Variables
 

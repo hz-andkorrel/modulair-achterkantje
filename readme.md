@@ -7,6 +7,8 @@ A modular broker service with plugin registration and reverse proxy capabilities
 - **Plugin Registration API**: Services can register themselves to receive routed traffic
 - **Reverse Proxy**: Automatically forwards requests to registered plugins based on route matching
 - **JWT Authentication**: Secure plugin registration and optional endpoint authentication
+- **Token Revocation**: Revoke individual or all user tokens with database persistence
+- **Automatic Cleanup**: Background job removes expired tokens every hour
 - **Status Endpoint**: Health check with optional user information
 - **Persistent Storage**: Plugin registrations are saved to disk and reloaded on startup
 
@@ -133,6 +135,44 @@ Plugins register themselves with the broker to receive traffic.
 #### `PUT /api/v1/route/:slug` - Update a plugin (requires JWT)
 
 #### `DELETE /api/v1/route/:slug` - Delete a plugin (requires JWT)
+
+### Authentication Endpoints
+
+#### `POST /api/v1/auth/revoke` - Revoke current token (requires JWT)
+
+Revokes the token used in the request.
+
+**Response:**
+```json
+{
+  "message": "token revoked successfully"
+}
+```
+
+#### `POST /api/v1/auth/revoke-all` - Revoke all user tokens (requires JWT)
+
+Revokes all tokens for the current user.
+
+**Response:**
+```json
+{
+  "message": "all tokens revoked successfully"
+}
+```
+
+### Admin Endpoints
+
+#### `POST /api/v1/admin/cleanup-tokens` - Cleanup expired tokens (requires JWT)
+
+Manually triggers cleanup of expired tokens from the database.
+
+**Response:**
+```json
+{
+  "message": "cleanup completed",
+  "deleted": 42
+}
+```
 
 ### Status Endpoint
 
