@@ -14,6 +14,12 @@ type Config struct {
 	// JWT settings
 	JWTExpiry time.Duration
 	JWTIssuer string
+    
+	// Application version (can be overridden via env or build flags)
+	Version string
+    
+	// Plugins persistence path (file). If empty, persistence is disabled.
+	PluginsPersistPath string
 }
 
 // LoadConfig loads configuration from environment variables with sensible defaults
@@ -22,11 +28,15 @@ func LoadConfig() *Config {
 		ServerPort: getEnv("BROKER_PORT", "8081"),
 		JWTExpiry:  getDurationEnv("JWT_EXPIRY", 10*time.Minute),
 		JWTIssuer:  getEnv("JWT_ISSUER", "broker-service"),
+		PluginsPersistPath: getEnv("PLUGINS_PERSIST_PATH", "data/plugins.json"),
+		Version:            getEnv("APP_VERSION", "1.0.0"),
 	}
 	
 	log.Println("Broker Configuration loaded:")
 	log.Printf("  Server port: %s\n", cfg.ServerPort)
 	log.Printf("  JWT expiry: %v\n", cfg.JWTExpiry)
+	log.Printf("  Plugins persist path: %s\n", cfg.PluginsPersistPath)
+	log.Printf("  Version: %s\n", cfg.Version)
 	
 	return cfg
 }
@@ -42,6 +52,8 @@ func getDurationEnv(key string, defaultValue time.Duration) time.Duration {
 	if value := os.Getenv(key); value != "" {
 		if duration, err := time.ParseDuration(value); err == nil {
 			return duration
+		} else {
+			log.Printf("Warning: Failed to parse %s value '%s', using default: %v", key, value, defaultValue)
 		}
 	}
 	return defaultValue

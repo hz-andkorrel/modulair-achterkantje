@@ -7,6 +7,7 @@ import (
 
 	"broker/internal/config"
 	"broker/internal/handlers"
+	"broker/internal/plugins"
 	"broker/internal/jwt"
 	"broker/internal/middleware"
 )
@@ -29,6 +30,30 @@ func main() {
 	{
 		// Status endpoint with optional authentication
 		v1.GET("/status", middleware.OptionalAuth(jwtManager), handlers.GetStatus)
+
+		// Plugin registration: plugins call POST /api/v1/route with their metadata
+		// Example body:
+		// {
+		//   "description": "Toont een welkomstscherm voor gebruikers bij binnenkomst",
+		//   "version": "1.0.2",
+		//   "slug": "kiosk",
+		//   "name": "Kiosk Plug-in",
+		//   "base-api-route": "/kiosk",
+		//   "settings-route": "/kiosk/settings",
+		//   "api-routes": ["/status", "/reset", "/welcome"],
+		//   "enabled": true
+		// }
+
+		// Require authentication for plugin registration
+		v1.POST("/route", middleware.RequireAuth(jwtManager), handlers.RegisterPlugin)
+		v1.GET("/routes", handlers.ListPlugins)
+	}
+
+	// Configure plugin persistence (loads existing registrations if present)
+	if cfg.PluginsPersistPath != "" {
+		if err := plugins.Global.SetPersistPath(cfg.PluginsPersistPath); err != nil {
+			log.Printf("Warning: failed to set plugin persist path: %v", err)
+		}
 	}
 
 	// Start server

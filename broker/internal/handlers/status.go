@@ -6,6 +6,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	"broker/internal/config"
 	"broker/internal/middleware"
 )
 
@@ -20,10 +21,12 @@ type StatusResponse struct {
 
 // GetStatus returns the API status with optional user info if authenticated
 func GetStatus(c *gin.Context) {
+	cfg := config.LoadConfig()
+
 	response := StatusResponse{
 		Status:        "healthy",
 		Timestamp:     time.Now(),
-		Version:       "1.0.0",
+		Version:       cfg.Version,
 		Authenticated: middleware.IsAuthenticated(c),
 	}
 

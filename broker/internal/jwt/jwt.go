@@ -6,6 +6,7 @@ import (
 	"crypto/x509"
 	"encoding/pem"
 	"errors"
+	"log"
 	"net/http"
 	"time"
 
@@ -65,7 +66,11 @@ func (m *Manager) ParseAndVerify(tokenStr string) (*jwt.RegisteredClaims, error)
 
 // For simple dev tooling: expose public key as PEM
 func (m *Manager) PublicKeyPEM() []byte {
-	pubASN1, _ := x509.MarshalPKIXPublicKey(m.public)
+	pubASN1, err := x509.MarshalPKIXPublicKey(m.public)
+	if err != nil {
+		log.Printf("Warning: failed to marshal public key: %v", err)
+		return nil
+	}
 	pemBytes := pem.EncodeToMemory(&pem.Block{Type: "PUBLIC KEY", Bytes: pubASN1})
 	return pemBytes
 }
