@@ -56,6 +56,88 @@ func (db *DB) Close() error {
 // InitSchema creates the necessary database tables
 func (db *DB) InitSchema(ctx context.Context) error {
 	schema := `
+	-- Create users table
+	CREATE TABLE IF NOT EXISTS users (
+		id TEXT PRIMARY KEY,
+		email TEXT NOT NULL UNIQUE,
+		name TEXT NOT NULL,
+		password_hash TEXT NOT NULL,
+		role TEXT DEFAULT 'user',
+		enabled BOOLEAN DEFAULT TRUE,
+		created_at TIMESTAMP DEFAULT NOW(),
+		updated_at TIMESTAMP DEFAULT NOW(),
+		last_login_at TIMESTAMP
+	);
+
+	CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
+	CREATE INDEX IF NOT EXISTS idx_users_role ON users(role);
+	CREATE INDEX IF NOT EXISTS idx_users_enabled ON users(enabled);
+
+	-- Create trigger for users updated_at
+	CREATE OR REPLACE FUNCTION update_users_updated_at()
+	RETURNS TRIGGER AS $$
+	BEGIN
+		NEW.updated_at = NOW();
+		RETURN NEW;
+	END;
+	$$ LANGUAGE plpgsql;
+
+	DROP TRIGGER IF EXISTS trigger_update_users_updated_at ON users;
+	CREATE TRIGGER trigger_update_users_updated_at
+		BEFORE UPDATE ON users
+		FOR EACH ROW
+		EXECUTE FUNCTION update_users_updated_at();
+
+	-- Create default admin user if not exists
+	INSERT INTO users (id, email, name, password_hash, role, enabled)
+	VALUES (
+		'admin-001',
+		'admin@example.com',
+		'System Administrator',
+		'$2a$10$rKvE7VE.h5LGW5Y5YnXzIOP7JqF.N8j8hP5F2KVxFJXpqN5vqYQOy',
+		'admin',
+		true
+	)
+	ON CONFLICT (id) DO NOTHING;
+
+	-- Create plugins table
+	CREATE TABLE IF NOT EXISTS plugins (
+		id SERIAL PRIMARY KEY,
+		slug TEXT NOT NULL UNIQUE,
+		name TEXT NOT NULL,
+		description TEXT,
+		version TEXT NOT NULL,
+		category TEXT,
+		host TEXT NOT NULL,
+		base_api_route TEXT NOT NULL,
+		settings_route TEXT,
+		api_routes JSONB DEFAULT '[]'::jsonb,
+		enabled BOOLEAN DEFAULT TRUE,
+		created_at TIMESTAMP DEFAULT NOW(),
+		updated_at TIMESTAMP DEFAULT NOW()
+	);
+
+	CREATE INDEX IF NOT EXISTS idx_plugins_slug ON plugins(slug);
+	CREATE INDEX IF NOT EXISTS idx_plugins_category ON plugins(category);
+	CREATE INDEX IF NOT EXISTS idx_plugins_enabled ON plugins(enabled);
+	CREATE INDEX IF NOT EXISTS idx_plugins_base_api_route ON plugins(base_api_route);
+
+	-- Create trigger for plugins updated_at
+	CREATE OR REPLACE FUNCTION update_plugins_updated_at()
+	RETURNS TRIGGER AS $$
+	BEGIN
+		NEW.updated_at = NOW();
+		RETURN NEW;
+	END;
+	$$ LANGUAGE plpgsql;
+
+	DROP TRIGGER IF EXISTS trigger_update_plugins_updated_at ON plugins;
+	CREATE TRIGGER trigger_update_plugins_updated_at
+		BEFORE UPDATE ON plugins
+		FOR EACH ROW
+		EXECUTE FUNCTION update_plugins_updated_at();
+
+	-- Create tokens table
 	CREATE TABLE IF NOT EXISTS tokens (
 		id SERIAL PRIMARY KEY,
 		token TEXT NOT NULL UNIQUE,
