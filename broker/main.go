@@ -85,7 +85,14 @@ func main() {
 	}
 
 	// Initialize Gin router
-	router := gin.Default()
+	gin.SetMode(gin.ReleaseMode) // Disable Gin's default logger for custom logging
+	router := gin.New()
+	
+	// Add recovery middleware to handle panics
+	router.Use(gin.Recovery())
+	
+	// Add custom request logging middleware
+	router.Use(middleware.RequestLogger())
 
 	// API v1 routes
 	v1 := router.Group("/api/v1")

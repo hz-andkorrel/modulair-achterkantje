@@ -10,6 +10,7 @@ A modular broker service with plugin registration and reverse proxy capabilities
 - **Token Revocation**: Revoke individual or all user tokens with database persistence
 - **Automatic Cleanup**: Background job removes expired tokens every hour
 - **Graceful Shutdown**: Properly closes database connections and completes in-flight requests
+- **Request Logging**: Structured logging of all requests with status, duration, and client IP
 - **Status Endpoint**: Health check with optional user information
 - **Persistent Storage**: Plugin registrations are saved to disk and reloaded on startup
 
@@ -408,4 +409,34 @@ The broker handles shutdown signals gracefully:
 **Docker:**
 ```bash
 docker-compose down  # Sends SIGTERM, triggers graceful shutdown
+```
+
+## Logging
+
+The broker logs all requests with detailed information:
+
+**Request Log Format:**
+```
+[REQUEST] 200 |     1.234ms |      127.0.0.1 | GET     /api/v1/status
+[REQUEST] 201 |    12.456ms |      127.0.0.1 | POST    /api/v1/route
+[PROXY] Forwarding to plugin 'internal-api' at http://localhost:8080
+[REQUEST] 200 |   123.789ms |      127.0.0.1 | GET     /api/v1/albums
+```
+
+**Log includes:**
+- HTTP status code
+- Request duration
+- Client IP address
+- HTTP method and path
+- Proxy forwarding details
+- Error messages (if any)
+
+**Example output:**
+```
+2025-11-19T10:30:15 Broker service starting on :8081
+2025-11-19T10:30:20 [REQUEST] 200 |      2.145ms |   192.168.1.100 | GET     /api/v1/status
+2025-11-19T10:30:25 [PROXY] Forwarding to plugin 'kiosk' at http://localhost:9000
+2025-11-19T10:30:25 [REQUEST] 200 |     45.678ms |   192.168.1.100 | GET     /kiosk/welcome
+2025-11-19T10:30:30 [PROXY ERROR] Plugin 'internal-api' failed: dial tcp: connection refused
+2025-11-19T10:30:30 [REQUEST] 502 |     10.234ms |   192.168.1.100 | GET     /api/v1/albums
 ```

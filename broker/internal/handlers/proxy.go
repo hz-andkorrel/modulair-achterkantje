@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"log"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
@@ -8,6 +9,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	"broker/internal/middleware"
 	"broker/internal/models"
 	"broker/internal/plugins"
 )
@@ -27,6 +29,9 @@ func ProxyToPlugin(c *gin.Context) {
 		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "plugin is disabled"})
 		return
 	}
+
+	// Log proxy request
+	middleware.ProxyLogger(plugin.Slug, plugin.Host)
 
 	// Parse plugin host URL
 	targetURL, err := url.Parse(plugin.Host)
@@ -53,7 +58,12 @@ func ProxyToPlugin(c *gin.Context) {
 
 	// Error handler for proxy failures
 	proxy.ErrorHandler = func(w http.ResponseWriter, r *http.Request, err error) {
-		c.JSON(http.StatusBadGateway, gin.H{"error": "plugin request failed", "details": err.Error()})
+		log.Printf("[PROXY ERROR] Plugin '%s' failed: %v", plugin.Slug, err)
+		c.JSON(http.StatusBadGateway, gin.H{
+			"error":   "plugin request failed",
+			"plugin":  plugin.Slug,
+			"details": err.Error(),
+		})
 	}
 
 	// Forward the request
