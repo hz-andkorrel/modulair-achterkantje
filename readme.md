@@ -9,6 +9,7 @@ A modular broker service with plugin registration and reverse proxy capabilities
 - **JWT Authentication**: Secure plugin registration and optional endpoint authentication
 - **Token Revocation**: Revoke individual or all user tokens with database persistence
 - **Automatic Cleanup**: Background job removes expired tokens every hour
+- **Graceful Shutdown**: Properly closes database connections and completes in-flight requests
 - **Status Endpoint**: Health check with optional user information
 - **Persistent Storage**: Plugin registrations are saved to disk and reloaded on startup
 
@@ -385,4 +386,26 @@ go test ./...
 ```bash
 cd broker
 go build -o broker.exe .
+```
+
+### Graceful Shutdown
+
+The broker handles shutdown signals gracefully:
+
+```bash
+# Press Ctrl+C to trigger graceful shutdown
+# Or send SIGTERM signal:
+# kill -SIGTERM <pid>
+```
+
+**Shutdown process:**
+1. Stops accepting new connections
+2. Completes in-flight requests (up to 30 seconds)
+3. Stops background cleanup job
+4. Closes database connections
+5. Exits cleanly
+
+**Docker:**
+```bash
+docker-compose down  # Sends SIGTERM, triggers graceful shutdown
 ```
