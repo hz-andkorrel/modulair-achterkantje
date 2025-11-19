@@ -11,6 +11,8 @@ A modular broker service with plugin registration and reverse proxy capabilities
 - **Automatic Cleanup**: Background job removes expired tokens every hour
 - **Graceful Shutdown**: Properly closes database connections and completes in-flight requests
 - **Request Logging**: Structured logging of all requests with status, duration, and client IP
+- **Health Checks**: Monitor plugin availability and response times
+- **Timeout Handling**: Configurable timeouts for plugin requests with detailed error responses
 - **Status Endpoint**: Health check with optional user information
 - **Persistent Storage**: Plugin registrations are saved to disk and reloaded on startup
 
@@ -176,6 +178,53 @@ Manually triggers cleanup of expired tokens from the database.
 }
 ```
 
+### Health Check Endpoints
+
+#### `GET /api/v1/health/plugins` - Check plugin health
+
+Checks the health status of all registered plugins.
+
+**Response:**
+```json
+{
+  "status": "healthy",
+  "checked": 3,
+  "healthy": 2,
+  "plugins": [
+    {
+      "slug": "internal-api",
+      "name": "Hotel Internal API",
+      "host": "http://localhost:8080",
+      "status": "healthy",
+      "response_time_ms": 45000000
+    },
+    {
+      "slug": "kiosk",
+      "name": "Kiosk Plugin",
+      "host": "http://localhost:9000",
+      "status": "unhealthy",
+      "error": "dial tcp: connection refused"
+    },
+    {
+      "slug": "analytics",
+      "name": "Analytics Service",
+      "host": "http://localhost:9001",
+      "status": "disabled"
+    }
+  ]
+}
+```
+
+**Status values:**
+- `healthy` - All plugins responding
+- `degraded` - Some plugins down
+- `unhealthy` - No plugins responding
+
+**Plugin status:**
+- `healthy` - Plugin is reachable
+- `unhealthy` - Plugin is not responding
+- `disabled` - Plugin is disabled in configuration
+
 ### Status Endpoint
 
 #### `GET /api/v1/status` - Service status
@@ -257,6 +306,10 @@ func RegisterWithBroker() error {
 **JWT Settings:**
 - `JWT_EXPIRY`: Token validity duration (default: `10m`)
 - `JWT_ISSUER`: JWT issuer name (default: `broker-service`)
+
+**Proxy Settings:**
+- `PROXY_TIMEOUT`: Timeout for plugin requests (default: `30s`)
+  - Examples: `10s`, `1m`, `90s`
 
 **Plugin Persistence:**
 - `PLUGINS_PERSIST_PATH`: Plugin storage file path (default: `data/plugins.json`)
@@ -440,3 +493,47 @@ The broker logs all requests with detailed information:
 2025-11-19T10:30:30 [PROXY ERROR] Plugin 'internal-api' failed: dial tcp: connection refused
 2025-11-19T10:30:30 [REQUEST] 502 |     10.234ms |   192.168.1.100 | GET     /api/v1/albums
 ```
+
+## Proxy Error Handling
+
+The broker provides detailed error responses for proxy failures:
+
+### Timeout Errors (504 Gateway Timeout)
+```json
+{
+  "error": "timeout",
+  "message": "plugin request failed",
+  "plugin": "internal-api",
+  "plugin_host": "http://localhost:8080",
+  "details": "context deadline exceeded"
+}
+```
+
+### Connection Refused (503 Service Unavailable)
+```json
+{
+  "error": "connection_refused",
+  "message": "plugin request failed",
+  "plugin": "kiosk",
+  "plugin_host": "http://localhost:9000",
+  "details": "dial tcp: connection refused"
+}
+```
+
+### DNS Errors (502 Bad Gateway)
+```json
+{
+  "error": "dns_error",
+  "message": "plugin request failed",
+  "plugin": "external-service",
+  "plugin_host": "http://nonexistent.local",
+  "details": "no such host"
+}
+```
+
+**Proxy Configuration:**
+- Default timeout: 30 seconds (configurable via `PROXY_TIMEOUT`)
+- Connection timeout: 10 seconds
+- Keep-alive: 30 seconds
+- Idle connection timeout: 90 seconds
+- Max idle connections: 100

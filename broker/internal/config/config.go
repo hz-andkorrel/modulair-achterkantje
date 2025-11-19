@@ -23,6 +23,9 @@ type Config struct {
 	
 	// Database settings
 	DatabaseURL string
+	
+	// Proxy settings
+	ProxyTimeout time.Duration
 }
 
 // LoadConfig loads configuration from environment variables with sensible defaults
@@ -34,6 +37,7 @@ func LoadConfig() *Config {
 		PluginsPersistPath: getEnv("PLUGINS_PERSIST_PATH", "data/plugins.json"),
 		Version:            getEnv("APP_VERSION", "1.0.0"),
 		DatabaseURL:        getEnv("DATABASE_URL", ""),
+		ProxyTimeout:       getDurationEnv("PROXY_TIMEOUT", 30*time.Second),
 	}
 	
 	log.Println("Broker Configuration loaded:")
@@ -41,6 +45,7 @@ func LoadConfig() *Config {
 	log.Printf("  JWT expiry: %v\n", cfg.JWTExpiry)
 	log.Printf("  Plugins persist path: %s\n", cfg.PluginsPersistPath)
 	log.Printf("  Version: %s\n", cfg.Version)
+	log.Printf("  Proxy timeout: %v\n", cfg.ProxyTimeout)
 	if cfg.DatabaseURL != "" {
 		log.Printf("  Database: enabled\n")
 	} else {

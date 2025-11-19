@@ -99,6 +99,9 @@ func main() {
 	{
 		// Status endpoint with optional authentication
 		v1.GET("/status", middleware.OptionalAuth(jwtManager), handlers.GetStatus)
+		
+		// Health check endpoint for plugins
+		v1.GET("/health/plugins", handlers.CheckPluginsHealth)
 
 		// Authentication endpoints
 		auth := v1.Group("/auth")
@@ -148,6 +151,9 @@ func main() {
 			log.Printf("Warning: failed to set plugin persist path: %v", err)
 		}
 	}
+
+	// Set configuration for proxy handlers
+	handlers.SetProxyConfig(cfg)
 
 	// Create HTTP server with timeouts
 	addr := ":" + cfg.ServerPort
