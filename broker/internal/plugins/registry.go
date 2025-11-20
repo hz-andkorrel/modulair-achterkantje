@@ -9,16 +9,6 @@ import (
 	"broker/internal/models"
 )
 
-// PluginStore defines the interface for plugin storage (database)
-type PluginStore interface {
-	SavePlugin(ctx context.Context, p *models.Plugin) error
-	GetPlugin(ctx context.Context, slug string) (*models.Plugin, error)
-	GetAllPlugins(ctx context.Context) ([]*models.Plugin, error)
-	UpdatePlugin(ctx context.Context, p *models.Plugin) error
-	DeletePlugin(ctx context.Context, slug string) error
-	GetAllBaseRoutes(ctx context.Context) ([]string, error)
-}
-
 // Registry stores registered plugins in memory and syncs with database
 type Registry struct {
 	mu      sync.RWMutex

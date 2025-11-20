@@ -2,6 +2,11 @@ package main
 
 import (
 	"context"
+	"hotelhub/broker/internal/database"
+	"hotelhub/broker/internal/handlers"
+	"hotelhub/broker/internal/middleware"
+	"hotelhub/broker/internal/plugins"
+	"hotelhub/broker/services"
 	"log"
 	"net/http"
 	"os"
@@ -10,55 +15,17 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-
-	"broker/internal/config"
-	"broker/internal/database"
-	"broker/internal/handlers"
-	"broker/internal/jwt"
-	"broker/internal/middleware"
-	"broker/internal/plugins"
 )
 
-// startCleanupJob runs a background job to clean up expired tokens
-func startCleanupJob(db *database.DB, stopChan <-chan struct{}) {
-	ticker := time.NewTicker(1 * time.Hour)
-	defer ticker.Stop()
-
-	log.Println("Started background token cleanup job (runs every hour)")
-
-	for {
-		select {
-		case <-ticker.C:
-			ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-			count, err := db.CleanupExpiredTokens(ctx)
-			cancel()
-
-			if err != nil {
-				log.Printf("Token cleanup failed: %v", err)
-			} else if count > 0 {
-				log.Printf("Cleaned up %d expired tokens", count)
-			}
-		case <-stopChan:
-			log.Println("Stopping token cleanup job")
-			return
-		}
-	}
-}
-
+// The entry point of the broker service start by loading the configuration from the .env file.
 func main() {
-	// Load configuration
-	cfg := config.LoadConfig()
-
-	// Initialize JWT manager
-	jwtManager, err := jwt.NewManager(cfg.JWTExpiry, cfg.JWTIssuer)
-	if err != nil {
-		log.Fatalf("Failed to create JWT manager: %v", err)
-	}
+	configuration := services.NewConfiguration()
+	jwtService := services.NewJwtService(configuration)
 
 	// Initialize database if configured
 	var db *database.DB
 	var cleanupStopChan chan struct{}
-	
+
 	if cfg.DatabaseURL != "" {
 		db, err = database.NewDB(cfg.DatabaseURL)
 		if err != nil {
@@ -87,10 +54,10 @@ func main() {
 	// Initialize Gin router
 	gin.SetMode(gin.ReleaseMode) // Disable Gin's default logger for custom logging
 	router := gin.New()
-	
+
 	// Add recovery middleware to handle panics
 	router.Use(gin.Recovery())
-	
+
 	// Add custom request logging middleware
 	router.Use(middleware.RequestLogger())
 
@@ -114,7 +81,7 @@ func main() {
 	{
 		// Status endpoint with optional authentication
 		v1.GET("/status", middleware.OptionalAuth(jwtManager), handlers.GetStatus)
-		
+
 		// Health check endpoint for plugins
 		v1.GET("/health/plugins", handlers.CheckPluginsHealth)
 
