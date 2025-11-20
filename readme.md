@@ -13,6 +13,7 @@ A modular broker service with plugin registration and reverse proxy capabilities
 - **Request Logging**: Structured logging of all requests with status, duration, and client IP
 - **Health Checks**: Monitor plugin availability and response times
 - **Timeout Handling**: Configurable timeouts for plugin requests with detailed error responses
+- **Rate Limiting**: Protect against abuse with configurable per-IP rate limits
 - **Status Endpoint**: Health check with optional user information
 - **Persistent Storage**: Plugin registrations are saved to disk and reloaded on startup
 
@@ -304,6 +305,12 @@ func RegisterWithBroker() error {
 - `PROXY_TIMEOUT`: Timeout for plugin requests (default: `30s`)
   - Examples: `10s`, `1m`, `90s`
 
+**Rate Limiting:**
+- `RATE_LIMIT_ENABLED`: Enable rate limiting (default: `true`)
+- `RATE_LIMIT_MAX_REQUESTS`: Max requests per window (default: `100`)
+- `RATE_LIMIT_WINDOW`: Time window for rate limiting (default: `1m`)
+  - Examples: `30s`, `1m`, `5m`
+
 **Plugin Persistence:**
 - `PLUGINS_PERSIST_PATH`: Plugin storage file path (default: `data/plugins.json`)
 
@@ -485,6 +492,64 @@ The broker logs all requests with detailed information:
 2025-11-19T10:30:25 [REQUEST] 200 |     45.678ms |   192.168.1.100 | GET     /kiosk/welcome
 2025-11-19T10:30:30 [PROXY ERROR] Plugin 'internal-api' failed: dial tcp: connection refused
 2025-11-19T10:30:30 [REQUEST] 502 |     10.234ms |   192.168.1.100 | GET     /api/v1/albums
+```
+
+## Rate Limiting
+
+The broker includes built-in rate limiting to prevent abuse and ensure fair usage.
+
+### How It Works
+
+- **Token Bucket Algorithm**: Each IP address gets a bucket of tokens
+- **Refill Rate**: Tokens are refilled continuously based on the configured rate
+- **Per-IP Limiting**: Each client IP is tracked independently
+- **Automatic Cleanup**: Old buckets are cleaned up every 5 minutes to prevent memory leaks
+
+### Configuration
+
+```bash
+# Enable/disable rate limiting
+RATE_LIMIT_ENABLED=true
+
+# Allow 100 requests per minute per IP
+RATE_LIMIT_MAX_REQUESTS=100
+RATE_LIMIT_WINDOW=1m
+```
+
+### Rate Limit Response
+
+When rate limit is exceeded:
+
+**Status:** `429 Too Many Requests`
+
+```json
+{
+  "error": "rate_limit_exceeded",
+  "message": "Too many requests. Please try again later.",
+  "retry_after": 60
+}
+```
+
+### Recommended Settings
+
+| Environment | Max Requests | Window | Use Case |
+|-------------|--------------|--------|----------|
+| Development | 1000 | 1m | Local testing, no restrictions |
+| Staging | 100 | 1m | Similar to production |
+| Production | 60 | 1m | Standard API usage |
+| Production (strict) | 30 | 1m | High security requirements |
+| Production (generous) | 200 | 1m | High traffic applications |
+
+### Disabling Rate Limiting
+
+```bash
+RATE_LIMIT_ENABLED=false
+```
+
+Or set very high limits:
+```bash
+RATE_LIMIT_MAX_REQUESTS=10000
+RATE_LIMIT_WINDOW=1m
 ```
 
 ## Proxy Error Handling

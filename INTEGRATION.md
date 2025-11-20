@@ -175,9 +175,9 @@ curl http://localhost:8081/api/v1/albums
 
 ## Future Enhancements
 
-- [ ] Health checks for registered plugins
+- [x] Health checks for registered plugins (✓ Implemented)
+- [x] Rate limiting per IP (✓ Implemented)
 - [ ] Load balancing across multiple plugin instances
 - [ ] Circuit breaker for failing plugins
 - [ ] Request/response transformation
-- [ ] Rate limiting per plugin
 - [ ] Metrics and observability (request counts, latency)

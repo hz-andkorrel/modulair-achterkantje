@@ -94,6 +94,12 @@ func main() {
 	// Add custom request logging middleware
 	router.Use(middleware.RequestLogger())
 
+	// Add rate limiting if enabled
+	if cfg.RateLimitEnabled {
+		router.Use(middleware.IPRateLimit(cfg.RateLimitMaxRequests, cfg.RateLimitWindow))
+		log.Printf("Rate limiting enabled: %d requests per %v per IP", cfg.RateLimitMaxRequests, cfg.RateLimitWindow)
+	}
+
 	// API v1 routes
 	v1 := router.Group("/api/v1")
 	{
