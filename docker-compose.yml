@@ -10,8 +10,8 @@ services:
     command: redis-server --save 60 1 --loglevel warning 
     networks:
       - private_network
-    expose:
-      - "6379"
+    ports:
+      - "6379:6379"  # Expose to host for cross-repo communication
     volumes:
       - ~/data/redis:/data
     restart: always
