@@ -39,9 +39,6 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
-volumes:
-  postgres_data:
-services:
   # The event bus service is created using Redis
   # Data is saved every 60 seconds if at least 1 change has occurred.
   # Within the private network, port 6379 is exposed for communication with services.
