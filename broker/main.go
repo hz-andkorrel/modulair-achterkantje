@@ -2,38 +2,66 @@ package main
 
 import (
 	"log"
-	"net/http"
-	"os"
 
-	"broker/handlers"
-	"broker/metrics"
-	"broker/middleware"
+	"github.com/gin-gonic/gin"
+
+	"broker/internal/config"
+	"broker/internal/handlers"
+	"broker/internal/plugins"
+	"broker/internal/jwt"
+	"broker/internal/middleware"
 )
 
 func main() {
-	// Initialize metrics tracking
-	metrics.Init()
+	// Load configuration
+	cfg := config.LoadConfig()
 
-	port := os.Getenv("PORT")
-	if port == "" {
-		port = "8080"
+	// Initialize JWT manager
+	jwtManager, err := jwt.NewManager(cfg.JWTExpiry, cfg.JWTIssuer)
+	if err != nil {
+		log.Fatalf("Failed to create JWT manager: %v", err)
 	}
 
-	mux := http.NewServeMux()
+	// Initialize Gin router
+	router := gin.Default()
 
-	// API endpoints with metrics tracking
-	mux.HandleFunc("/api/v1/status", middleware.MetricsMiddleware("status", handlers.Status))
-	mux.HandleFunc("/api/v1/metrics", middleware.MetricsMiddleware("metrics", handlers.Metrics))
+	// API v1 routes
+	v1 := router.Group("/api/v1")
+	{
+		// Status endpoint with optional authentication
+		v1.GET("/status", middleware.OptionalAuth(jwtManager), handlers.GetStatus)
 
-	// Health check endpoints
-	mux.HandleFunc("/health", middleware.MetricsMiddleware("health", handlers.Health))
-	mux.HandleFunc("/ready", middleware.MetricsMiddleware("ready", handlers.Ready))
-	mux.HandleFunc("/healthz", middleware.MetricsMiddleware("health", handlers.Health))
-	mux.HandleFunc("/readyz", middleware.MetricsMiddleware("ready", handlers.Ready))
+		// Plugin registration: plugins call POST /api/v1/route with their metadata
+		// Example body:
+		// {
+		//   "description": "Toont een welkomstscherm voor gebruikers bij binnenkomst",
+		//   "version": "1.0.2",
+		//   "slug": "kiosk",
+		//   "name": "Kiosk Plug-in",
+		//   "base-api-route": "/kiosk",
+		//   "settings-route": "/kiosk/settings",
+		//   "api-routes": ["/status", "/reset", "/welcome"],
+		//   "enabled": true
+		// }
 
-	addr := ":" + port
-	log.Printf("broker: starting server on %s", addr)
-	if err := http.ListenAndServe(addr, mux); err != nil {
-		log.Fatalf("broker: server failed: %v", err)
+		// Require authentication for plugin registration
+		v1.POST("/route", middleware.RequireAuth(jwtManager), handlers.RegisterPlugin)
+		v1.GET("/routes", handlers.ListPlugins)
+		v1.PUT("/route/:slug", middleware.RequireAuth(jwtManager), handlers.UpdatePlugin)
+		v1.DELETE("/route/:slug", middleware.RequireAuth(jwtManager), handlers.DeletePlugin)
+	}
+
+	// Configure plugin persistence (loads existing registrations if present)
+	if cfg.PluginsPersistPath != "" {
+		if err := plugins.Global.SetPersistPath(cfg.PluginsPersistPath); err != nil {
+			log.Printf("Warning: failed to set plugin persist path: %v", err)
+		}
+	}
+
+	// Start server
+	addr := ":" + cfg.ServerPort
+	log.Printf("Broker service starting on %s", addr)
+	if err := router.Run(addr); err != nil {
+		log.Fatalf("Failed to start server: %v", err)
 	}
 }
