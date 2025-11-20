@@ -1,17 +1,20 @@
 package middleware
 
 import (
+	"context"
 	"net/http"
+	"time"
 
 	"github.com/gin-gonic/gin"
 
+	"broker/internal/database"
 	"broker/internal/jwt"
 	"broker/internal/models"
 )
 
 // OptionalAuth is middleware that checks for JWT but doesn't require it
 // If a valid token is present, it adds user info to the context
-func OptionalAuth(jm *jwt.Manager) gin.HandlerFunc {
+func OptionalAuth(jm *jwt.Manager, db *database.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		// Check for Authorization header
 		header := c.GetHeader("Authorization")
@@ -38,11 +41,24 @@ func OptionalAuth(jm *jwt.Manager) gin.HandlerFunc {
 			return
 		}
 
-		// For this MVP, we create a minimal user object from the JWT subject
-		// In a real system, you might fetch full user details from a database
-		user := &models.User{
-			ID:    claims.Subject,
-			Email: claims.Subject, // Using subject as email for now
+		// Fetch real user from database
+		var user *models.User
+		if db != nil {
+			ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+			defer cancel()
+
+			user, err = db.GetUserByID(ctx, claims.Subject)
+			if err != nil || user == nil {
+				// User not found in database, continue without user info
+				c.Next()
+				return
+			}
+		} else {
+			// Fallback to minimal user object if database not available
+			user = &models.User{
+				ID:    claims.Subject,
+				Email: claims.Subject,
+			}
 		}
 
 		// Add user to context
@@ -56,7 +72,7 @@ func OptionalAuth(jm *jwt.Manager) gin.HandlerFunc {
 
 // RequireAuth is middleware that enforces a valid JWT. If the token is missing or invalid,
 // the request is aborted with HTTP 401.
-func RequireAuth(jm *jwt.Manager) gin.HandlerFunc {
+func RequireAuth(jm *jwt.Manager, db *database.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		// Check for Authorization header
 		header := c.GetHeader("Authorization")
@@ -80,9 +96,23 @@ func RequireAuth(jm *jwt.Manager) gin.HandlerFunc {
 			return
 		}
 
-		user := &models.User{
-			ID:    claims.Subject,
-			Email: claims.Subject,
+		// Fetch real user from database
+		var user *models.User
+		if db != nil {
+			ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+			defer cancel()
+
+			user, err = db.GetUserByID(ctx, claims.Subject)
+			if err != nil || user == nil {
+				c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "user not found in database"})
+				return
+			}
+		} else {
+			// Fallback to minimal user object if database not available
+			user = &models.User{
+				ID:    claims.Subject,
+				Email: claims.Subject,
+			}
 		}
 
 		// Add user to context
@@ -111,7 +141,7 @@ func IsAuthenticated(c *gin.Context) bool {
 	if !exists {
 		return false
 	}
-	
+
 	auth, ok := authenticated.(bool)
 	return ok && auth
 }

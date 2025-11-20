@@ -100,6 +100,15 @@ func main() {
 		log.Printf("Rate limiting enabled: %d requests per %v per IP", cfg.RateLimitMaxRequests, cfg.RateLimitWindow)
 	}
 
+	// Initialize plugin registry with database if available
+	if db != nil {
+		if err := plugins.Global.SetDB(db); err != nil {
+			log.Printf("Warning: failed to set plugin database: %v", err)
+		} else {
+			log.Println("Plugin registry connected to database")
+		}
+	}
+
 	// API v1 routes
 	v1 := router.Group("/api/v1")
 	{
@@ -112,13 +121,16 @@ func main() {
 		// Authentication endpoints
 		auth := v1.Group("/auth")
 		{
-			auth.POST("/revoke", middleware.RequireAuth(jwtManager), handlers.RevokeToken(db))
-			auth.POST("/revoke-all", middleware.RequireAuth(jwtManager), handlers.RevokeAllUserTokens(db))
+			auth.POST("/register", handlers.Register(db, jwtManager))
+			auth.POST("/login", handlers.Login(db, jwtManager))
+			auth.GET("/me", middleware.RequireAuth(jwtManager, db), handlers.GetMe(db))
+			auth.POST("/revoke", middleware.RequireAuth(jwtManager, db), handlers.RevokeToken(db))
+			auth.POST("/revoke-all", middleware.RequireAuth(jwtManager, db), handlers.RevokeAllUserTokens(db))
 		}
 
 		// Admin endpoints
 		admin := v1.Group("/admin")
-		admin.Use(middleware.RequireAuth(jwtManager))
+		admin.Use(middleware.RequireAuth(jwtManager, db))
 		{
 			admin.POST("/cleanup-tokens", handlers.CleanupExpiredTokens(db))
 		}
@@ -139,12 +151,12 @@ func main() {
 		// }
 
 		// Require authentication for plugin registration
-		v1.POST("/route", middleware.RequireAuth(jwtManager), handlers.RegisterPlugin)
+		v1.POST("/route", middleware.RequireAuth(jwtManager, db), handlers.RegisterPlugin)
 		v1.GET("/routes", handlers.ListPlugins)
 		v1.GET("/routes/categories", handlers.GetCategories)
 		v1.GET("/routes/category/:category", handlers.ListPluginsByCategory)
-		v1.PUT("/route/:slug", middleware.RequireAuth(jwtManager), handlers.UpdatePlugin)
-		v1.DELETE("/route/:slug", middleware.RequireAuth(jwtManager), handlers.DeletePlugin)
+		v1.PUT("/route/:slug", middleware.RequireAuth(jwtManager, db), handlers.UpdatePlugin)
+		v1.DELETE("/route/:slug", middleware.RequireAuth(jwtManager, db), handlers.DeletePlugin)
 	}
 
 	// Catch-all proxy route: forward requests to registered plugins
