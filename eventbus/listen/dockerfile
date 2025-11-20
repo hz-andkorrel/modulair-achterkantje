@@ -1,0 +1,9 @@
+# The builder image will compile the Go application.
+FROM golang:latest AS builder
+WORKDIR /app
+
+COPY go.* ./
+RUN go mod download
+
+COPY . ./
+CMD go run .

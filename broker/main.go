@@ -3,6 +3,10 @@ package main
 import (
 	"context"
 	"log"
+	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -16,21 +20,27 @@ import (
 )
 
 // startCleanupJob runs a background job to clean up expired tokens
-func startCleanupJob(db *database.DB) {
+func startCleanupJob(db *database.DB, stopChan <-chan struct{}) {
 	ticker := time.NewTicker(1 * time.Hour)
 	defer ticker.Stop()
 
 	log.Println("Started background token cleanup job (runs every hour)")
 
-	for range ticker.C {
-		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-		count, err := db.CleanupExpiredTokens(ctx)
-		cancel()
+	for {
+		select {
+		case <-ticker.C:
+			ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+			count, err := db.CleanupExpiredTokens(ctx)
+			cancel()
 
-		if err != nil {
-			log.Printf("Token cleanup failed: %v", err)
-		} else if count > 0 {
-			log.Printf("Cleaned up %d expired tokens", count)
+			if err != nil {
+				log.Printf("Token cleanup failed: %v", err)
+			} else if count > 0 {
+				log.Printf("Cleaned up %d expired tokens", count)
+			}
+		case <-stopChan:
+			log.Println("Stopping token cleanup job")
+			return
 		}
 	}
 }
@@ -47,32 +57,48 @@ func main() {
 
 	// Initialize database if configured
 	var db *database.DB
+	var cleanupStopChan chan struct{}
+	
 	if cfg.DatabaseURL != "" {
 		db, err = database.NewDB(cfg.DatabaseURL)
 		if err != nil {
 			log.Fatalf("Failed to connect to database: %v", err)
 		}
-		defer db.Close()
 
 		// Initialize database schema
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-		defer cancel()
 		if err := db.InitSchema(ctx); err != nil {
+			cancel()
 			log.Fatalf("Failed to initialize database schema: %v", err)
 		}
+		cancel()
 
 		// Set database on JWT manager for token persistence
 		jwtManager.SetDB(db)
 		log.Println("Database connected and initialized")
 
 		// Start background cleanup job for expired tokens
-		go startCleanupJob(db)
+		cleanupStopChan = make(chan struct{})
+		go startCleanupJob(db, cleanupStopChan)
 	} else {
 		log.Println("Database disabled - tokens will not be persisted")
 	}
 
 	// Initialize Gin router
-	router := gin.Default()
+	gin.SetMode(gin.ReleaseMode) // Disable Gin's default logger for custom logging
+	router := gin.New()
+	
+	// Add recovery middleware to handle panics
+	router.Use(gin.Recovery())
+	
+	// Add custom request logging middleware
+	router.Use(middleware.RequestLogger())
+
+	// Add rate limiting if enabled
+	if cfg.RateLimitEnabled {
+		router.Use(middleware.IPRateLimit(cfg.RateLimitMaxRequests, cfg.RateLimitWindow))
+		log.Printf("Rate limiting enabled: %d requests per %v per IP", cfg.RateLimitMaxRequests, cfg.RateLimitWindow)
+	}
 
 	// Initialize plugin registry with database if available
 	if db != nil {
@@ -87,7 +113,10 @@ func main() {
 	v1 := router.Group("/api/v1")
 	{
 		// Status endpoint with optional authentication
-		v1.GET("/status", middleware.OptionalAuth(jwtManager, db), handlers.GetStatus)
+		v1.GET("/status", middleware.OptionalAuth(jwtManager), handlers.GetStatus)
+		
+		// Health check endpoint for plugins
+		v1.GET("/health/plugins", handlers.CheckPluginsHealth)
 
 		// Authentication endpoints
 		auth := v1.Group("/auth")
@@ -134,10 +163,63 @@ func main() {
 	// This must be registered AFTER specific routes to avoid conflicts
 	router.NoRoute(handlers.ProxyToPlugin)
 
-	// Start server
-	addr := ":" + cfg.ServerPort
-	log.Printf("Broker service starting on %s", addr)
-	if err := router.Run(addr); err != nil {
-		log.Fatalf("Failed to start server: %v", err)
+	// Configure plugin persistence (loads existing registrations if present)
+	if cfg.PluginsPersistPath != "" {
+		if err := plugins.Global.SetPersistPath(cfg.PluginsPersistPath); err != nil {
+			log.Printf("Warning: failed to set plugin persist path: %v", err)
+		}
 	}
+
+	// Set configuration for proxy handlers
+	handlers.SetProxyConfig(cfg)
+
+	// Create HTTP server with timeouts
+	addr := ":" + cfg.ServerPort
+	srv := &http.Server{
+		Addr:         addr,
+		Handler:      router,
+		ReadTimeout:  15 * time.Second,
+		WriteTimeout: 15 * time.Second,
+		IdleTimeout:  60 * time.Second,
+	}
+
+	// Start server in a goroutine
+	go func() {
+		log.Printf("Broker service starting on %s", addr)
+		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			log.Fatalf("Failed to start server: %v", err)
+		}
+	}()
+
+	// Wait for interrupt signal to gracefully shutdown the server
+	quit := make(chan os.Signal, 1)
+	// SIGINT (Ctrl+C), SIGTERM (docker stop, kubernetes)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+	<-quit
+	log.Println("Shutting down server...")
+
+	// Graceful shutdown with timeout
+	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer shutdownCancel()
+
+	// Shutdown HTTP server
+	if err := srv.Shutdown(shutdownCtx); err != nil {
+		log.Printf("Server forced to shutdown: %v", err)
+	}
+
+	// Stop background cleanup job
+	if cleanupStopChan != nil {
+		close(cleanupStopChan)
+	}
+
+	// Close database connection
+	if db != nil {
+		if err := db.Close(); err != nil {
+			log.Printf("Error closing database: %v", err)
+		} else {
+			log.Println("Database connection closed")
+		}
+	}
+
+	log.Println("Server shutdown complete")
 }

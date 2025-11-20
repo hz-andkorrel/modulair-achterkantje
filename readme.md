@@ -9,6 +9,11 @@ A modular broker service with plugin registration and reverse proxy capabilities
 - **JWT Authentication**: Secure plugin registration and optional endpoint authentication
 - **Token Revocation**: Revoke individual or all user tokens with database persistence
 - **Automatic Cleanup**: Background job removes expired tokens every hour
+- **Graceful Shutdown**: Properly closes database connections and completes in-flight requests
+- **Request Logging**: Structured logging of all requests with status, duration, and client IP
+- **Health Checks**: Monitor plugin availability and response times
+- **Timeout Handling**: Configurable timeouts for plugin requests with detailed error responses
+- **Rate Limiting**: Protect against abuse with configurable per-IP rate limits
 - **Status Endpoint**: Health check with optional user information
 - **Persistent Storage**: Plugin registrations are saved to disk and reloaded on startup
 
@@ -174,6 +179,53 @@ Manually triggers cleanup of expired tokens from the database.
 }
 ```
 
+### Health Check Endpoints
+
+#### `GET /api/v1/health/plugins` - Check plugin health
+
+Checks the health status of all registered plugins.
+
+**Response:**
+```json
+{
+  "status": "healthy",
+  "checked": 3,
+  "healthy": 2,
+  "plugins": [
+    {
+      "slug": "internal-api",
+      "name": "Hotel Internal API",
+      "host": "http://localhost:8080",
+      "status": "healthy",
+      "response_time_ms": 45000000
+    },
+    {
+      "slug": "kiosk",
+      "name": "Kiosk Plugin",
+      "host": "http://localhost:9000",
+      "status": "unhealthy",
+      "error": "dial tcp: connection refused"
+    },
+    {
+      "slug": "analytics",
+      "name": "Analytics Service",
+      "host": "http://localhost:9001",
+      "status": "disabled"
+    }
+  ]
+}
+```
+
+**Status values:**
+- `healthy` - All plugins responding
+- `degraded` - Some plugins down
+- `unhealthy` - No plugins responding
+
+**Plugin status:**
+- `healthy` - Plugin is reachable
+- `unhealthy` - Plugin is not responding
+- `disabled` - Plugin is disabled in configuration
+
 ### Status Endpoint
 
 #### `GET /api/v1/status` - Service status
@@ -216,7 +268,7 @@ curl http://localhost:8081/api/v1/albums
 
 ## Integration with InternalAPI
 
-See `examples/register-with-broker.go` for a complete example of how plugins should register with the broker.
+InternalAPI automatically registers with the broker on startup. The implementation is in InternalAPI's `/internal/broker/register.go`.
 
 ### Environment Variables for InternalAPI
 
@@ -231,16 +283,9 @@ Plugins should register themselves when they start:
 
 ```go
 func RegisterWithBroker() error {
-    registration := PluginRegistration{
-        Slug:         "internal-api",
-        Name:         "Hotel Internal API",
-        Host:         "http://localhost:8080",
-        BaseAPIRoute: "/api/v1",
-        Enabled:      true,
-    }
-    
-    // POST to broker's /api/v1/route endpoint
-    // See examples/register-with-broker.go for full code
+    // InternalAPI automatically calls broker.RegisterWithBroker(cfg.Host, cfg.Port)
+    // This sends a POST to broker's /api/v1/route endpoint with plugin metadata
+    // See InternalAPI/internal/broker/register.go for implementation
 }
 ```
 
@@ -255,6 +300,16 @@ func RegisterWithBroker() error {
 **JWT Settings:**
 - `JWT_EXPIRY`: Token validity duration (default: `10m`)
 - `JWT_ISSUER`: JWT issuer name (default: `broker-service`)
+
+**Proxy Settings:**
+- `PROXY_TIMEOUT`: Timeout for plugin requests (default: `30s`)
+  - Examples: `10s`, `1m`, `90s`
+
+**Rate Limiting:**
+- `RATE_LIMIT_ENABLED`: Enable rate limiting (default: `true`)
+- `RATE_LIMIT_MAX_REQUESTS`: Max requests per window (default: `100`)
+- `RATE_LIMIT_WINDOW`: Time window for rate limiting (default: `1m`)
+  - Examples: `30s`, `1m`, `5m`
 
 **Plugin Persistence:**
 - `PLUGINS_PERSIST_PATH`: Plugin storage file path (default: `data/plugins.json`)
@@ -355,8 +410,8 @@ export BROKER_URL="http://localhost:8081"
 export BROKER_AUTH_TOKEN="your-jwt-token"
 go run main.go
 
-# Terminal 2: Register InternalAPI with broker
-go run ../modulair-achterkantje/examples/register-with-broker.go
+# InternalAPI will automatically register with the broker on startup
+# You should see: "✓ Successfully registered with broker"
 ```
 
 ### Test the Integration
@@ -386,3 +441,157 @@ go test ./...
 cd broker
 go build -o broker.exe .
 ```
+
+### Graceful Shutdown
+
+The broker handles shutdown signals gracefully:
+
+```bash
+# Press Ctrl+C to trigger graceful shutdown
+# Or send SIGTERM signal:
+# kill -SIGTERM <pid>
+```
+
+**Shutdown process:**
+1. Stops accepting new connections
+2. Completes in-flight requests (up to 30 seconds)
+3. Stops background cleanup job
+4. Closes database connections
+5. Exits cleanly
+
+**Docker:**
+```bash
+docker-compose down  # Sends SIGTERM, triggers graceful shutdown
+```
+
+## Logging
+
+The broker logs all requests with detailed information:
+
+**Request Log Format:**
+```
+[REQUEST] 200 |     1.234ms |      127.0.0.1 | GET     /api/v1/status
+[REQUEST] 201 |    12.456ms |      127.0.0.1 | POST    /api/v1/route
+[PROXY] Forwarding to plugin 'internal-api' at http://localhost:8080
+[REQUEST] 200 |   123.789ms |      127.0.0.1 | GET     /api/v1/albums
+```
+
+**Log includes:**
+- HTTP status code
+- Request duration
+- Client IP address
+- HTTP method and path
+- Proxy forwarding details
+- Error messages (if any)
+
+**Example output:**
+```
+2025-11-19T10:30:15 Broker service starting on :8081
+2025-11-19T10:30:20 [REQUEST] 200 |      2.145ms |   192.168.1.100 | GET     /api/v1/status
+2025-11-19T10:30:25 [PROXY] Forwarding to plugin 'kiosk' at http://localhost:9000
+2025-11-19T10:30:25 [REQUEST] 200 |     45.678ms |   192.168.1.100 | GET     /kiosk/welcome
+2025-11-19T10:30:30 [PROXY ERROR] Plugin 'internal-api' failed: dial tcp: connection refused
+2025-11-19T10:30:30 [REQUEST] 502 |     10.234ms |   192.168.1.100 | GET     /api/v1/albums
+```
+
+## Rate Limiting
+
+The broker includes built-in rate limiting to prevent abuse and ensure fair usage.
+
+### How It Works
+
+- **Token Bucket Algorithm**: Each IP address gets a bucket of tokens
+- **Refill Rate**: Tokens are refilled continuously based on the configured rate
+- **Per-IP Limiting**: Each client IP is tracked independently
+- **Automatic Cleanup**: Old buckets are cleaned up every 5 minutes to prevent memory leaks
+
+### Configuration
+
+```bash
+# Enable/disable rate limiting
+RATE_LIMIT_ENABLED=true
+
+# Allow 100 requests per minute per IP
+RATE_LIMIT_MAX_REQUESTS=100
+RATE_LIMIT_WINDOW=1m
+```
+
+### Rate Limit Response
+
+When rate limit is exceeded:
+
+**Status:** `429 Too Many Requests`
+
+```json
+{
+  "error": "rate_limit_exceeded",
+  "message": "Too many requests. Please try again later.",
+  "retry_after": 60
+}
+```
+
+### Recommended Settings
+
+| Environment | Max Requests | Window | Use Case |
+|-------------|--------------|--------|----------|
+| Development | 1000 | 1m | Local testing, no restrictions |
+| Staging | 100 | 1m | Similar to production |
+| Production | 60 | 1m | Standard API usage |
+| Production (strict) | 30 | 1m | High security requirements |
+| Production (generous) | 200 | 1m | High traffic applications |
+
+### Disabling Rate Limiting
+
+```bash
+RATE_LIMIT_ENABLED=false
+```
+
+Or set very high limits:
+```bash
+RATE_LIMIT_MAX_REQUESTS=10000
+RATE_LIMIT_WINDOW=1m
+```
+
+## Proxy Error Handling
+
+The broker provides detailed error responses for proxy failures:
+
+### Timeout Errors (504 Gateway Timeout)
+```json
+{
+  "error": "timeout",
+  "message": "plugin request failed",
+  "plugin": "internal-api",
+  "plugin_host": "http://localhost:8080",
+  "details": "context deadline exceeded"
+}
+```
+
+### Connection Refused (503 Service Unavailable)
+```json
+{
+  "error": "connection_refused",
+  "message": "plugin request failed",
+  "plugin": "kiosk",
+  "plugin_host": "http://localhost:9000",
+  "details": "dial tcp: connection refused"
+}
+```
+
+### DNS Errors (502 Bad Gateway)
+```json
+{
+  "error": "dns_error",
+  "message": "plugin request failed",
+  "plugin": "external-service",
+  "plugin_host": "http://nonexistent.local",
+  "details": "no such host"
+}
+```
+
+**Proxy Configuration:**
+- Default timeout: 30 seconds (configurable via `PROXY_TIMEOUT`)
+- Connection timeout: 10 seconds
+- Keep-alive: 30 seconds
+- Idle connection timeout: 90 seconds
+- Max idle connections: 100
