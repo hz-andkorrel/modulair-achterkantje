@@ -15,11 +15,11 @@ func main() {
 		DB:   0,
 	})
 
-	subscription := redis.Subscribe(context, "events")
+	subscription := redis.Subscribe(context, "events", "hotel.events")
 	channel := subscription.Channel()
 
-	fmt.Println("Listening for messages on 'events' channel...")
+	fmt.Println("Listening for messages on 'events' and 'hotel.events' channels...")
 	for msg := range channel {
-		fmt.Printf("Received message: %s\n", msg.Payload)
+		fmt.Printf("📨 [%s] %s\n", msg.Channel, msg.Payload)
 	}
 }
