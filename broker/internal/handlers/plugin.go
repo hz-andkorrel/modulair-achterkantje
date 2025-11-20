@@ -23,6 +23,11 @@ func RegisterPlugin(c *gin.Context) {
         return
     }
 
+    if p.Host == "" {
+        c.JSON(http.StatusBadRequest, gin.H{"error": "host is required"})
+        return
+    }
+
     // Normalize paths
     p.BaseAPIRoute = normalizePath(p.BaseAPIRoute)
     p.SettingsRoute = normalizePath(p.SettingsRoute)

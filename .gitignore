@@ -1,3 +1,10 @@
+# Build artifacts
+broker/broker
+broker/broker.exe
+*.exe
+*.dll
+*.so
+*.dylib
 # The data directory contains user and application data
 data/
 

@@ -70,6 +70,8 @@ func TestRegisterPlugin_SuccessAndPersistence(t *testing.T) {
         "version": "1.0.2",
         "slug": "kiosk",
         "name": "Kiosk Plug-in",
+        "category": "user-interface",
+        "host": "http://localhost:8080",
         "base-api-route": "/kiosk",
         "settings-route": "/kiosk/settings",
         "api-routes": []string{"/status", "/reset", "/welcome"},
@@ -120,6 +122,7 @@ func TestRegisterPlugin_DuplicateSlug(t *testing.T) {
     payload := map[string]interface{}{
         "slug": "dup-plugin",
         "name": "Dup Plugin",
+        "host": "http://localhost:8080",
     }
     b, _ := json.Marshal(payload)
 
@@ -164,6 +167,7 @@ func TestUpdatePlugin_Success(t *testing.T) {
     payload := map[string]interface{}{
         "slug":            "test-plugin",
         "name":            "Test Plugin",
+        "host":            "http://localhost:8080",
         "version":         "1.0.0",
         "base-api-route":  "/test",
     }
@@ -181,6 +185,7 @@ func TestUpdatePlugin_Success(t *testing.T) {
     updatePayload := map[string]interface{}{
         "slug":            "test-plugin",
         "name":            "Updated Test Plugin",
+        "host":            "http://localhost:8080",
         "version":         "2.0.0",
         "base-api-route":  "/test",
     }
@@ -210,6 +215,7 @@ func TestUpdatePlugin_NotFound(t *testing.T) {
     payload := map[string]interface{}{
         "slug": "nonexistent",
         "name": "Nonexistent",
+        "host": "http://localhost:8080",
     }
     b, _ := json.Marshal(payload)
     req, _ := http.NewRequest(http.MethodPut, "/api/v1/route/nonexistent", bytes.NewReader(b))
@@ -238,6 +244,7 @@ func TestDeletePlugin_Success(t *testing.T) {
     payload := map[string]interface{}{
         "slug": "delete-me",
         "name": "Delete Me",
+        "host": "http://localhost:8080",
     }
     b, _ := json.Marshal(payload)
     req1, _ := http.NewRequest(http.MethodPost, "/api/v1/route", bytes.NewReader(b))
@@ -301,6 +308,7 @@ func TestRegisterPlugin_RouteConflict(t *testing.T) {
     payload1 := map[string]interface{}{
         "slug":           "plugin1",
         "name":           "Plugin 1",
+        "host":           "http://localhost:8080",
         "base-api-route": "/custom",
     }
     b1, _ := json.Marshal(payload1)
@@ -317,6 +325,7 @@ func TestRegisterPlugin_RouteConflict(t *testing.T) {
     payload2 := map[string]interface{}{
         "slug":           "plugin2",
         "name":           "Plugin 2",
+        "host":           "http://localhost:9090",
         "base-api-route": "/custom",
     }
     b2, _ := json.Marshal(payload2)

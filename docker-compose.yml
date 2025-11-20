@@ -1,3 +1,46 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: broker-postgres
+    environment:
+      POSTGRES_USER: broker
+      POSTGRES_PASSWORD: broker123
+      POSTGRES_DB: broker_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U broker"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  broker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: broker-service
+    environment:
+      BROKER_PORT: 8081
+      DATABASE_URL: postgres://broker:broker123@postgres:5432/broker_db?sslmode=disable
+      JWT_EXPIRY: 10m
+      JWT_ISSUER: broker-service
+      PLUGINS_PERSIST_PATH: /data/plugins.json
+      APP_VERSION: 1.0.0
+    ports:
+      - "8081:8081"
+    volumes:
+      - ./data:/data
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
 services:
   # The event bus service is created using Redis
   # Data is saved every 60 seconds if at least 1 change has occurred.
