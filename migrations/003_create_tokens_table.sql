@@ -6,7 +6,8 @@ CREATE TABLE IF NOT EXISTS tokens (
     issued_at TIMESTAMP NOT NULL,
     expires_at TIMESTAMP NOT NULL,
     revoked BOOLEAN DEFAULT FALSE,
-    created_at TIMESTAMP DEFAULT NOW()
+    created_at TIMESTAMP DEFAULT NOW(),
+    CONSTRAINT fk_tokens_user FOREIGN KEY (subject) REFERENCES users(id) ON DELETE CASCADE
 );
 
 -- Create indexes for performance
