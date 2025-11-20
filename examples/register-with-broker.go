@@ -1,3 +1,14 @@
+// REFERENCE IMPLEMENTATION ONLY
+// This file shows how plugins should integrate with the broker.
+// For the actual InternalAPI implementation, see:
+// ../InternalAPI/internal/broker/register.go
+//
+// This example demonstrates:
+// - How to structure the PluginRegistration payload
+// - How to handle environment variables
+// - How to implement non-blocking registration
+// - Error handling best practices
+
 package main
 
 import (

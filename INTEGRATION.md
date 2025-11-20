@@ -118,7 +118,7 @@ type Plugin struct {
 
 ## Integration Example
 
-See `examples/register-with-broker.go` for full code.
+InternalAPI integration is implemented in `../InternalAPI/internal/broker/register.go`.
 
 ### InternalAPI Integration
 

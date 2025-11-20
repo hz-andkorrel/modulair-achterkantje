@@ -267,7 +267,7 @@ curl http://localhost:8081/api/v1/albums
 
 ## Integration with InternalAPI
 
-See `examples/register-with-broker.go` for a complete example of how plugins should register with the broker.
+InternalAPI automatically registers with the broker on startup. The implementation is in InternalAPI's `/internal/broker/register.go`.
 
 ### Environment Variables for InternalAPI
 
@@ -282,16 +282,9 @@ Plugins should register themselves when they start:
 
 ```go
 func RegisterWithBroker() error {
-    registration := PluginRegistration{
-        Slug:         "internal-api",
-        Name:         "Hotel Internal API",
-        Host:         "http://localhost:8080",
-        BaseAPIRoute: "/api/v1",
-        Enabled:      true,
-    }
-    
-    // POST to broker's /api/v1/route endpoint
-    // See examples/register-with-broker.go for full code
+    // InternalAPI automatically calls broker.RegisterWithBroker(cfg.Host, cfg.Port)
+    // This sends a POST to broker's /api/v1/route endpoint with plugin metadata
+    // See InternalAPI/internal/broker/register.go for implementation
 }
 ```
 
@@ -410,8 +403,8 @@ export BROKER_URL="http://localhost:8081"
 export BROKER_AUTH_TOKEN="your-jwt-token"
 go run main.go
 
-# Terminal 2: Register InternalAPI with broker
-go run ../modulair-achterkantje/examples/register-with-broker.go
+# InternalAPI will automatically register with the broker on startup
+# You should see: "✓ Successfully registered with broker"
 ```
 
 ### Test the Integration

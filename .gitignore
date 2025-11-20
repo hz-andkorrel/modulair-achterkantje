@@ -1,2 +1,7 @@
 # Build artifacts
-source/modulair-achterkantje
+broker/broker
+broker/broker.exe
+*.exe
+*.dll
+*.so
+*.dylib
