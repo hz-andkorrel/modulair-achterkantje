@@ -1,0 +1,48 @@
+services:
+  # The event bus service is created using Redis
+  # Data is saved every 60 seconds if at least 1 change has occurred.
+  # Within the private network, port 6379 is exposed for communication with services.
+  # The host and the internet cannot access this service directly.
+  # A health check is implemented to ensure the Redis server is operational.
+  eventbus:
+    image: redis:latest
+    container_name: hub_bus
+    command: redis-server --save 60 1 --loglevel warning 
+    networks:
+      - private_network
+    ports:
+      - "6379:6379"  # Expose to host for cross-repo communication
+    volumes:
+      - ~/data/redis:/data
+    restart: always
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # The broker service is built from the Dockerfile in the ./broker directory.
+  # It connects to both the private and public networks.
+  # It depends on the event bus service to ensure it starts after the event bus is up.
+  publisher:
+    build: ./eventbus/publish
+    container_name: hub_publisher
+    networks:
+      - private_network
+    depends_on:
+      - eventbus
+
+  listener:
+    build: ./eventbus/listen
+    container_name: hub_listener
+    networks:
+      - private_network
+    depends_on:
+      - eventbus
+
+
+networks:
+  private_network:
+    driver: bridge
+  public_network:
+    driver: bridge
