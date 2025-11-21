@@ -1,35 +1,55 @@
 package middleware
 
 import (
+	"hotelhub/broker/services"
 	"log"
 	"net/http"
 
-	"hotelhub/broker/services"
+	"github.com/gin-gonic/gin"
 )
 
 // JwtMiddleware extracts and verifies the JWT token from the Authorization header of the HTTP request
 // It returns the subject from the token claims if verification is successful.
 // When authorization fails, it logs the reason and returns an empty string.
+// Based on the 'required' flag, it either aborts the request with 401 or allows it to proceed.
 // Possible reasons are: missing header, invalid format, or token verification failure.
-func JwtMiddleware(request *http.Request, jwtService *services.JwtService) string {
-	header := request.Header.Get("Authorization")
-	if header == "" {
-		log.Println("[JWT] Authorization header missing")
-		return ""
-	}
+func JwtMiddleware(jwtService *services.JwtService, required bool) gin.HandlerFunc {
+	return func(context *gin.Context) {
+		header := context.GetHeader("Authorization")
+		if header == "" {
+			authenticationError(context, "Authorization header missing", required)
+			return
+		}
 
-	const prefix = "Bearer "
-	if len(header) <= len(prefix) || header[:len(prefix)] != prefix {
-		log.Println("[JWT] Invalid authorization header format")
-		return ""
-	}
+		const prefix = "Bearer "
+		if len(header) <= len(prefix) || header[:len(prefix)] != prefix {
+			authenticationError(context, "Invalid authorization header format", required)
+			return
+		}
 
-	token := header[len(prefix):]
-	claims := jwtService.ParseAndVerify(token)
-	if claims == nil {
-		log.Println("[JWT] Token verification failed")
-		return ""
-	}
+		token := header[len(prefix):]
+		claims := jwtService.ParseAndVerify(token)
+		if claims == nil {
+			authenticationError(context, "Token verification failed", required)
+			return
+		}
 
-	return claims.Subject
+		context.Set("user_id", claims.Subject)
+		context.Set("authenticated", true)
+		context.Next()
+	}
+}
+
+// Helper function to handle authentication errors
+// The function start by logging the error message to the console.
+// Based on the 'required' flag, it either aborts the request wiith 401 or allows it to proceed.
+// The error message is send along with the 401 response.
+func authenticationError(context *gin.Context, message string, required bool) {
+	log.Println("[JWT] " + message)
+
+	if required {
+		context.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "message"})
+	} else {
+		context.Next()
+	}
 }
