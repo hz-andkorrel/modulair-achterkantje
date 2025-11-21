@@ -1,26 +1,18 @@
-# Build artifacts
-broker/broker
-broker/broker.exe
+# Compiled binaries and output of several build tools shall be ignored.
 *.exe
+*.exe~
 *.dll
 *.so
 *.dylib
-# The data directory contains user and application data
-data/
 
-# Environment variables with secrets (DO NOT COMMIT)
+# Environment files contain information that should not be shared.
+# An example file is provided as a template and should be used instead.
 .env
-**/.env
 
-# Go build artifacts
-*.exe
-*.test
-*.out
-
-# IDE files
+# Editor configuration files are personal per developer and should not be committed.
 .vscode/
-.idea/
-*.swp
 
-# OS files
+# Some operating systems create hidden files that should not be committed.
+# DS_Store files are created by macOS, and Thumbs.db files are created by Windows.
 .DS_Store
+Thumbs.db
