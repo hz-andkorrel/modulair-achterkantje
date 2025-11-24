@@ -1,0 +1,71 @@
+services:
+  # PostgreSQL database service for the broker application
+  # Uses the official Postgres 16 Alpine image for a lightweight setup.
+  # Environment variables are loaded from the .env file, from which the ports are also mapped.
+  # Data is persisted in a Docker volume to ensure it remains intact across container restarts.
+  postgres:
+    image: postgres:16-alpine
+    container_name: hotelhub-postgres
+    env_file:
+      - ".env"
+    ports:
+      - "${DATABASE_PORT}:${DATABASE_PORT}"
+    volumes:
+      - ./data/postgres_dev:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U broker"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+
+  # Broker service for the hotel hub application, build from the local dockerfile.
+  # Depends on the PostgreSQL service to ensure the database is ready before starting.
+  # Environment variables are loaded from the .env file, and ports are mapped accordingly.
+  # Data is persisted in a Docker volume to maintain state across restarts.
+  broker:
+    image: golang:latest
+    container_name: hotelhub-broker
+    working_dir: /app
+    env_file:
+      - ".env"
+    ports:
+      - "${BROKER_PORT}:${BROKER_PORT}"
+    volumes:
+      - ./broker:/app
+    depends_on:
+      postgres:
+        condition: service_healthy
+    entrypoint: ["sh", "-c", "go install github.com/mitranim/gow@latest && gow run main.go"]
+
+  # The event bus service is created using Redis
+  # Data is saved every 60 seconds if at least 1 change has occurred.
+  # Within the private network, port 6379 is exposed for communication with services.
+  # The host and the internet cannot access this service directly.
+  # A health check is implemented to ensure the Redis server is operational.
+  eventbus:
+    image: redis:latest
+    container_name: hub_bus
+    command: redis-server --save 60 1 --loglevel warning 
+    networks:
+      - private_network
+    ports:
+      - "${REDIS_PORT}:${REDIS_PORT}"
+    volumes:
+      - ./data/redis_dev:/data
+    restart: always
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+
+# Definition of private and public networks for service isolation and communication.
+# Private network is used for internal service communication (e.g., event bus).
+# Public network is used for services that need to be accessible from outside.
+networks:
+  private_network:
+    driver: bridge
+  public_network:
+    driver: bridge
