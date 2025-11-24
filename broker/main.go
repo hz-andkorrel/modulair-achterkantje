@@ -13,6 +13,6 @@ func main() {
 	jwtService := services.NewJwtService(configuration)
 	repositoryStrategy := services.NewPostgresRepositoryStrategy()
 
-	router := infrastructure.NewRouter(configuration, jwtService)
+	router := infrastructure.NewRouter(configuration, jwtService, repositoryStrategy)
 	router.Run()
 }

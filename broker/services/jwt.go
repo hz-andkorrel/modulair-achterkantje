@@ -11,7 +11,7 @@ import (
 	"github.com/golang-jwt/jwt/v4"
 )
 
-// Manager wraps RSA keys and token generation/validation
+// JwtService wraps RSA keys and token generation/validation
 type JwtService struct {
 	singingMethod jwt.SigningMethod
 	privateKey    *rsa.PrivateKey
@@ -82,8 +82,8 @@ func (service *JwtService) retrieveKey(token *jwt.Token) (any, error) {
 }
 
 // For simple dev tooling: expose public key as PEM
-func (m *Manager) PublicKeyPEM() []byte {
-	pubASN1, err := x509.MarshalPKIXPublicKey(m.public)
+func (service *JwtService) PublicKeyPEM() []byte {
+	pubASN1, err := x509.MarshalPKIXPublicKey(service.publicKey)
 	if err != nil {
 		log.Printf("Warning: failed to marshal public key: %v", err)
 		return nil

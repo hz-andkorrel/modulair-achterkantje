@@ -13,7 +13,5 @@ type RepositoryStrategy struct {
 // NewPostgresRepositoryStrategy creates a new RepositoryStrategy using Postgres repositories.
 // Information will be stored and retrieved from a Postgres database.
 func NewPostgresRepositoryStrategy() *RepositoryStrategy {
-	return &RepositoryStrategy{
-		PluginRepository: repository.NewPostgresPluginRepository(),
-	}
+	return &RepositoryStrategy{}
 }

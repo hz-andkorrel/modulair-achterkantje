@@ -1,4 +1,4 @@
-package models
+package domain
 
 // MetricsResponse contains runtime and request metrics
 type MetricsResponse struct {
