@@ -45,7 +45,7 @@ services:
   # A health check is implemented to ensure the Redis server is operational.
   eventbus:
     image: redis:latest
-    container_name: hub_bus
+    container_name: hotelhub-bus
     command: redis-server --save 60 1 --loglevel warning 
     networks:
       - private_network

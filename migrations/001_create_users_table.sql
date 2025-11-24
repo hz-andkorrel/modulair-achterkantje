@@ -5,7 +5,7 @@ CREATE TABLE IF NOT EXISTS users (
     name TEXT NOT NULL,
     password_hash TEXT NOT NULL,
     role TEXT DEFAULT 'user',
-    enabled BOOLEAN DEFAULT TRUE,
+    enabled BOOLEAN DEFAULT TRUE
 );
 
 -- Create indexes for performance

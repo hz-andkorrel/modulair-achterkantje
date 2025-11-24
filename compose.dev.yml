@@ -12,6 +12,7 @@ services:
       - "${DATABASE_PORT}:${DATABASE_PORT}"
     volumes:
       - ./data/postgres_dev:/var/lib/postgresql/data
+      - ./migrations:/docker-entrypoint-initdb.d
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U broker"]
       interval: 10s
@@ -27,11 +28,10 @@ services:
     image: golang:latest
     container_name: hotelhub-broker
     working_dir: /app
-    env_file:
-      - ".env"
     ports:
       - "${BROKER_PORT}:${BROKER_PORT}"
     volumes:
+      - ./.env:/app/.env
       - ./broker:/app
     depends_on:
       postgres:
@@ -45,7 +45,7 @@ services:
   # A health check is implemented to ensure the Redis server is operational.
   eventbus:
     image: redis:latest
-    container_name: hub_bus
+    container_name: hotelhub-bus
     command: redis-server --save 60 1 --loglevel warning 
     networks:
       - private_network
