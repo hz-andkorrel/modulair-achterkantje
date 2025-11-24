@@ -38,6 +38,7 @@ services:
         condition: service_healthy
     entrypoint: ["sh", "-c", "go install github.com/mitranim/gow@latest && gow run main.go"]
 
+
   # The event bus service is created using Redis
   # Data is saved every 60 seconds if at least 1 change has occurred.
   # Within the private network, port 6379 is exposed for communication with services.
@@ -59,6 +60,25 @@ services:
       interval: 30s
       timeout: 10s
       retries: 5
+
+
+  # Another image has been added allowing for the visual management of the database.
+  # pgAdmin is configured with default login credentials and maps port 8080 on the host to port 80 in the container.
+  # The user is set to "5050:5050" to ensure proper file permissions. Data persists within the volume.
+  # It is made sure that pgAdmin has written access to the volume, check readme for more information.
+  data-explorer:
+    image: dpage/pgadmin4:latest
+    container_name: hotelhub-pgadmin
+    user: "5050:5050"
+    environment:
+      PGADMIN_DEFAULT_EMAIL: "admin@admin.com"
+      PGADMIN_DEFAULT_PASSWORD: "admin"
+    ports:
+      - "8080:80"
+    depends_on:
+      - postgres
+    volumes:
+      - ./data/pgadmin_dev:/var/lib/pgadmin
 
 
 # Definition of private and public networks for service isolation and communication.

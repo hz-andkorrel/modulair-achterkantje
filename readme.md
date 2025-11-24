@@ -6,7 +6,14 @@ An eventbus is used to facilitate communication between different plugins in a d
 This allows plugins to respond to each other's events without direct dependencies.
 
 
-## Running the Development Environment
+## Development Environment
+
+The development environment is containerized using Docker Compose only.
+This allows for easy setup and teardown of the development environment, including extra tools.
+One of these tools is `pgadmin`, a web-based database management tool for PostgreSQL.
+
+
+### Running the Development Environment
 
 The development environment can be started using Docker Compose.
 It uses the `compose.dev.yml` configuration file.
@@ -20,7 +27,23 @@ docker-compose -f compose.dev.yml up
 
 There are three services defined in the `compose.dev.yml` file.
 `postgres` is the database service, `broker` and `eventbus` speak for themselves.
-No aditional configuration is required to get started from scratch.
+The `pgAdmin` container does not run it's service in root mode.
+This mean that it might be necessary to grant permission from the host machine in order to make it work.
+
+```bash
+sudo chown -R 5050:5050 data/pgadmin_dev
+```
+
+### Maintaining the database
 
 To **recreate the database** and start fresh, the folder `data/postgres_dev` should be deleted.
 Emptying this folder is not sufficient, as Postgres keeps some metadata files that will prevent a clean start.
+
+
+### Accessing pgAdmin
+
+After running the development environment, pgAdmin can be accessed via a web browser.
+By default, it is available at `http://localhost:8080`.
+The default login credentials are: `admin@admin.com` and password `admin`.
+From this point, from this point, a new server connection can be created to connect to the Postgres database.
+
