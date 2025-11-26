@@ -5,7 +5,9 @@ import (
 )
 
 // JwtRepository defines methods for storing and validating JWT tokens
-type JwtRepository interface {
-	SaveToken(token, subject string, issuedAt, expiresAt time.Time) error
-	IsTokenValid(token string) (bool, error)
+// It can add, validate and delete tokens
+type BaseJwtRepository interface {
+	Add(token, subject string, expiresAt time.Time) bool
+	IsValid(token string) bool
+	Delete(token string) bool
 }

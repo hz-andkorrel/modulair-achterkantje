@@ -32,3 +32,28 @@ func (postgres *Postgres) QueryRow(query string, args ...any) *sql.Row {
 	row := db.QueryRow(query, args...)
 	return row
 }
+
+// Execute executes a query and returns the number of affected rows.
+// If an error occurs during the connection or query execution, it logs the error and returns zero.
+func (postgres *Postgres) Execute(query string, args ...any) int {
+	db, err := sql.Open("postgres", postgres.connectionString)
+	if err != nil {
+		log.Println("[Postgres] cannot connect to database:", err)
+		return 0
+	}
+
+	defer db.Close()
+	result, err := db.Exec(query, args...)
+	if err != nil {
+		log.Println("[Postgres] cannot execute query:", err)
+		return 0
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		log.Println("[Postgres] cannot retrieve affected rows:", err)
+		return 0
+	}
+
+	return int(rowsAffected)
+}

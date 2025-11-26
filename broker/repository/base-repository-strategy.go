@@ -6,7 +6,7 @@ import "hotelhub/broker/services"
 // A structure will be returned with a selection of repositories based on the method.
 // The strategy can be implemented as dependency injection for different repository types.
 type RepositoryStrategy struct {
-	JtwRepository    JwtRepository
+	JwtRepository    BaseJwtRepository
 	PluginRepository PluginRepository
 	UserRepository   BaseUserRepository
 }
@@ -16,5 +16,6 @@ type RepositoryStrategy struct {
 func NewPostgresRepositoryStrategy(postgres *services.Postgres) *RepositoryStrategy {
 	return &RepositoryStrategy{
 		UserRepository: NewPostgresUserRepository(postgres),
+		JwtRepository:  NewPostgresJwtRepository(postgres),
 	}
 }

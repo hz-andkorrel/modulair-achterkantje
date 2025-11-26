@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"hotelhub/broker/repository"
 	"hotelhub/broker/services"
 	"log"
 	"net/http"
@@ -13,7 +14,7 @@ import (
 // When authorization fails, it logs the reason and returns an empty string.
 // Based on the 'required' flag, it either aborts the request with 401 or allows it to proceed.
 // Possible reasons are: missing header, invalid format, or token verification failure.
-func JwtMiddleware(jwtService *services.JwtService, required bool) gin.HandlerFunc {
+func JwtMiddleware(jwtService *services.JwtService, repository *repository.RepositoryStrategy, required bool) gin.HandlerFunc {
 	return func(context *gin.Context) {
 		header := context.GetHeader("Authorization")
 		if header == "" {
@@ -28,7 +29,7 @@ func JwtMiddleware(jwtService *services.JwtService, required bool) gin.HandlerFu
 		}
 
 		token := header[len(prefix):]
-		claims := jwtService.ParseAndVerify(token)
+		claims := jwtService.Parse(token)
 		if claims == nil {
 			authenticationError(context, "Token verification failed", required)
 			return

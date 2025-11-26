@@ -55,21 +55,17 @@ func (service *JwtService) GenerateToken(subject string) (string, time.Time) {
 	return signedToken, expireTime
 }
 
-// ParseAndVerify takes a JWT token string and verifies its signature and expiration
-// If the token is valid, it returns the registered claims; otherwise, it returns nil
-// Log messages are printed for parsing errors and expiration
-func (service *JwtService) ParseAndVerify(tokenString string) *jwt.RegisteredClaims {
+// ParseAndVerify takes a JWT token string and parses it.
+// WARNING: this function does NOT validate the token!
+// If the token can be parsed into claims, the claim is returned; otherwise, nil is returned.
+// Log messages are printed for parsing errors.
+func (service *JwtService) Parse(tokenString string) *jwt.RegisteredClaims {
 	parser := jwt.Parser{}
 	var claims jwt.RegisteredClaims
 
 	_, err := parser.ParseWithClaims(tokenString, &claims, service.retrieveKey)
 	if err != nil {
 		log.Println("Failed to parse JWT token:", err)
-		return nil
-	}
-
-	if claims.ExpiresAt == nil || claims.ExpiresAt.Time.Before(time.Now()) {
-		log.Println("JWT token has expired")
 		return nil
 	}
 

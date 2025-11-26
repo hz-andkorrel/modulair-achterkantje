@@ -48,6 +48,7 @@ func (handler *AuthHandler) login(jwtService *services.JwtService) gin.HandlerFu
 
 		// If valid, generate a JWT token using jwtService
 		token, time := jwtService.GenerateToken(user.Id)
+		handler.repository.JwtRepository.Add(token, user.Id, time)
 
 		// Return the token in the response
 		context.JSON(200, gin.H{

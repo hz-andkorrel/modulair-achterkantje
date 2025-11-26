@@ -6,16 +6,24 @@ import (
 	"log"
 )
 
+// PostgresUserRepository is a postgres implementation of the BaseUserRepository interface.
+// It requires an instance of the Postgres service to interact with the database.
 type PostgresUserRepository struct {
 	database *services.Postgres
 }
 
+// NewPostgresUserRepository creates a new instance of PostgresUserRepository.
+// The provided database instance is used for database operations.
 func NewPostgresUserRepository(database *services.Postgres) BaseUserRepository {
 	return &PostgresUserRepository{
 		database: database,
 	}
 }
 
+// Get retrieves a user by their username from the Postgres database.
+// This field corrresponds to the 'id' column in the 'users' table.
+// If the user is found, it returns a pointer to a domain.User struct; otherwise, it returns nil.
+// Errors are logged for debugging purposes.
 func (repo *PostgresUserRepository) Get(username string) *domain.User {
 	var user domain.User
 	query := "SELECT id, email, name, password_hash, role, enabled FROM users WHERE id = $1"
