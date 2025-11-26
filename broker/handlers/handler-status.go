@@ -1,31 +1,39 @@
 package handlers
 
 import (
+	"hotelhub/broker/middleware"
+	"hotelhub/broker/repository"
 	"hotelhub/broker/services"
 
 	"github.com/gin-gonic/gin"
 )
 
 // StatusHandler is used to handle a status check, implementing the BaseHandler interface.
-type StatusHandler struct{}
+// It requires a RepositoryStrategy to access the data layer if needed.
+type StatusHandler struct {
+	repository *repository.RepositoryStrategy
+}
 
 // NewStatusHandler creates a new instance of StatusHandler.
-// There is no additional setup required for this handler.
-func NewStatusHandler() BaseHandler {
-	return &StatusHandler{}
+// It takes a RepositoryStrategy as a parameter to access the data layer if needed.
+func NewStatusHandler(repository *repository.RepositoryStrategy) BaseHandler {
+	return &StatusHandler{
+		repository: repository,
+	}
 }
 
 // RegisterRoutes registers the status check route with the provided Gin engine.
-func (h *StatusHandler) RegisterRoutes(engine *gin.Engine, _ *services.JwtService) {
-	engine.GET("/status", h.getStatus())
+func (handler *StatusHandler) RegisterRoutes(engine *gin.Engine, jwt *services.JwtService) {
+	engine.GET("/status", middleware.JwtMiddleware(jwt, handler.repository, false), handler.getStatus())
 }
 
 // GetHandler returns the Gin handler function for the status check.
 // It responds with a JSON object indicating the service status.
-func (h *StatusHandler) getStatus() gin.HandlerFunc {
-	return func(c *gin.Context) {
-		c.JSON(200, gin.H{
-			"status": "ok",
+func (handler *StatusHandler) getStatus() gin.HandlerFunc {
+	return func(context *gin.Context) {
+		context.JSON(200, gin.H{
+			"status":        "ok",
+			"authenticated": context.GetBool("authenticated"),
 		})
 	}
 }

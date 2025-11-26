@@ -26,7 +26,7 @@ func NewRouter(configuration *services.Configuration, jwtService *services.JwtSe
 	engine.Use(gin.Recovery())
 	engine.Use(middleware.RequestLogging())
 
-	NewStatusHandler().RegisterRoutes(engine, jwtService)
+	NewStatusHandler(repository).RegisterRoutes(engine, jwtService)
 	NewAuthHandler(repository).RegisterRoutes(engine, jwtService)
 
 	return &Router{
