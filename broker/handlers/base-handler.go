@@ -1,10 +1,14 @@
 package handlers
 
-import "github.com/gin-gonic/gin"
+import (
+	"hotelhub/broker/services"
+
+	"github.com/gin-gonic/gin"
+)
 
 // BaseHandler defines a common interface for all handlers to implement.
 // The constructor should return BaseHandler and setup anything required for the handler.
-// The GetHandler method returns the actual Gin handler function.
+// Each handler must implement the RegisterRoutes method to define its routes.
 type BaseHandler interface {
-	GetHandler() gin.HandlerFunc
+	RegisterRoutes(engine *gin.Engine, jwtService *services.JwtService)
 }

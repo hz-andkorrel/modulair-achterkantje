@@ -20,7 +20,7 @@ VALUES (
     'admin-001',
     'admin@example.com',
     'System Administrator',
-    '$2a$10$rKvE7VE.h5LGW5Y5YnXzIOP7JqF.N8j8hP5F2KVxFJXpqN5vqYQOy',
+    '$2a$10$RXUz3Sq2kiZ2NKZciHVnFuqFyPHgf1G6OIfiMJIeAJETmIi8yeBsu',
     'admin',
     true
 )

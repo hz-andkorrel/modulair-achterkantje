@@ -1,7 +1,8 @@
 package main
 
 import (
-	"hotelhub/broker/infrastructure"
+	"hotelhub/broker/handlers"
+	"hotelhub/broker/repository"
 	"hotelhub/broker/services"
 )
 
@@ -11,8 +12,9 @@ import (
 func main() {
 	configuration := services.NewConfiguration()
 	jwtService := services.NewJwtService(configuration)
-	repositoryStrategy := services.NewPostgresRepositoryStrategy()
+	database := services.NewPostgres(configuration)
+	repositoryStrategy := repository.NewPostgresRepositoryStrategy(database)
 
-	router := infrastructure.NewRouter(configuration, jwtService, repositoryStrategy)
+	router := handlers.NewRouter(configuration, jwtService, repositoryStrategy)
 	router.Run()
 }
