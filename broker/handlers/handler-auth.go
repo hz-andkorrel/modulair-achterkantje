@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"hotelhub/broker/middleware"
 	"hotelhub/broker/repository"
 	"hotelhub/broker/services"
 
@@ -24,7 +25,7 @@ func NewAuthHandler(repository *repository.RepositoryStrategy) BaseHandler {
 // The auth endpoint supports login (POST) and logout (DELETE) operations.
 func (handler *AuthHandler) RegisterRoutes(engine *gin.Engine, jwtService *services.JwtService) {
 	engine.POST("/auth", handler.login(jwtService))
-	engine.DELETE("/auth", handler.logout())
+	engine.DELETE("/auth", middleware.JwtMiddleware(jwtService, handler.repository, true), handler.logout())
 }
 
 // The login handler processes user login requests.
@@ -59,12 +60,15 @@ func (handler *AuthHandler) login(jwtService *services.JwtService) gin.HandlerFu
 }
 
 // The logout handler processes user logout requests.
-// It should invalidate the user's session or token as needed.
+// It invalidates the provided JWT token by setting it as revoked in the repository.
 func (handler *AuthHandler) logout() gin.HandlerFunc {
 	return func(context *gin.Context) {
-		// Invalidate the user's token
+		status := handler.repository.JwtRepository.Delete(context.GetHeader("Authorization"))
+		if !status {
+			context.JSON(400, gin.H{"error": "Logout failed"})
+			return
+		}
 
-		// Return a success response
-		context.JSON(418, gin.H{"message": "Logout successful"})
+		context.JSON(200, gin.H{"message": "Logout successful"})
 	}
 }

@@ -35,6 +35,11 @@ func JwtMiddleware(jwtService *services.JwtService, repository *repository.Repos
 			return
 		}
 
+		if !repository.JwtRepository.IsValid(token) {
+			authenticationError(context, "Token is revoked or expired", required)
+			return
+		}
+
 		context.Set("user_id", claims.Subject)
 		context.Set("authenticated", true)
 		context.Next()

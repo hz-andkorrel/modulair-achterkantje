@@ -79,3 +79,10 @@ The last parameter indicates whether the authentication is mandatory for this en
 ```go
 engine.GET("/status", middleware.JwtMiddleware(jwt, handler.repository, false), handler.getStatus())
 ```
+
+The logout endpoint requires authentication through the middleware, as it invalidates the token.
+The process is initiated by sending a DELETE request to the `/auth` endpoint.
+The process changes the revoked status of the token in the database to true.
+
+
+
