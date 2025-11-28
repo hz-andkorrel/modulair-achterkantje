@@ -1,8 +1,6 @@
 package domain
 
 import (
-	"log"
-
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -18,6 +16,5 @@ type User struct {
 
 // Compare a given password with the stored password hash.
 func (user *User) ValidatePassword(password string) bool {
-	log.Println("Comparison result:", bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(password)))
 	return bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(password)) == nil
 }

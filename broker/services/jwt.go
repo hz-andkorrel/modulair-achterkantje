@@ -13,7 +13,7 @@ import (
 
 // JwtService wraps RSA keys and token generation/validation
 type JwtService struct {
-	singingMethod jwt.SigningMethod
+	signingMethod jwt.SigningMethod
 	privateKey    *rsa.PrivateKey
 	publicKey     *rsa.PublicKey
 	expiryTime    time.Duration
@@ -28,7 +28,7 @@ func NewJwtService(configuration *Configuration) *JwtService {
 	key, _ := rsa.GenerateKey(rand.Reader, 2048)
 
 	return &JwtService{
-		singingMethod: jwt.SigningMethodRS256,
+		signingMethod: jwt.SigningMethodRS256,
 		privateKey:    key,
 		publicKey:     &key.PublicKey,
 		expiryTime:    configuration.JwtExpiry,
@@ -50,12 +50,12 @@ func (service *JwtService) GenerateToken(subject string) (string, time.Time) {
 		ExpiresAt: jwt.NewNumericDate(expireTime),
 	}
 
-	rawToken := jwt.NewWithClaims(service.singingMethod, claims)
+	rawToken := jwt.NewWithClaims(service.signingMethod, claims)
 	signedToken, _ := rawToken.SignedString(service.privateKey)
 	return signedToken, expireTime
 }
 
-// ParseAndVerify takes a JWT token string and parses it.
+// Parse takes a JWT token string and parses it.
 // WARNING: this function does NOT validate the token!
 // If the token can be parsed into claims, the claim is returned; otherwise, nil is returned.
 // Log messages are printed for parsing errors.

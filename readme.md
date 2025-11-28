@@ -45,7 +45,7 @@ Emptying this folder is not sufficient, as Postgres keeps some metadata files th
 After running the development environment, pgAdmin can be accessed via a web browser.
 By default, it is available at `http://localhost:8080`.
 The default login credentials are: `admin@admin.com` and password `admin`.
-From this point, from this point, a new server connection can be created to connect to the Postgres database.
+From this point, a new server connection can be created to connect to the Postgres database.
 
 
 ### Authentication and Authorization

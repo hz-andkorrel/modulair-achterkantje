@@ -20,12 +20,12 @@ func NewPostgres(configuration *Configuration) *Postgres {
 }
 
 // QueryRow executes a query that is expected to return at most one row.
-// If an error occurs during the connection or query execution, it logs the error and returns nil.
+// If an error occurs, it logs the error and returns an empty row.
 func (postgres *Postgres) QueryRow(query string, args ...any) *sql.Row {
 	db, err := sql.Open("postgres", postgres.connectionString)
 	if err != nil {
 		log.Println("[Postgres] cannot connect to database:", err)
-		return nil
+		return &sql.Row{}
 	}
 
 	defer db.Close()

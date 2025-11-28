@@ -32,7 +32,6 @@ func (handler *AuthHandler) RegisterRoutes(engine *gin.Engine, jwtService *servi
 // It should validate user credentials and issue a JWT token upon successful authentication.
 func (handler *AuthHandler) login(jwtService *services.JwtService) gin.HandlerFunc {
 	return func(context *gin.Context) {
-		// Retrieve and validate user credentials from the request
 		username := context.PostForm("username")
 		password := context.PostForm("password")
 
@@ -47,11 +46,8 @@ func (handler *AuthHandler) login(jwtService *services.JwtService) gin.HandlerFu
 			return
 		}
 
-		// If valid, generate a JWT token using jwtService
 		token, time := jwtService.GenerateToken(user.Id)
 		handler.repository.JwtRepository.Add(token, user.Id, time)
-
-		// Return the token in the response
 		context.JSON(200, gin.H{
 			"token":      token,
 			"expires_at": time,
@@ -63,7 +59,10 @@ func (handler *AuthHandler) login(jwtService *services.JwtService) gin.HandlerFu
 // It invalidates the provided JWT token by setting it as revoked in the repository.
 func (handler *AuthHandler) logout() gin.HandlerFunc {
 	return func(context *gin.Context) {
-		status := handler.repository.JwtRepository.Delete(context.GetHeader("Authorization"))
+		authHeader := context.GetHeader("Authorization")
+		token := authHeader[len("Bearer "):]
+
+		status := handler.repository.JwtRepository.Delete(token)
 		if !status {
 			context.JSON(400, gin.H{"error": "Logout failed"})
 			return

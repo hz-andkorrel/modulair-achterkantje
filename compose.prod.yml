@@ -12,8 +12,10 @@ services:
       - "${DATABASE_PORT}:${DATABASE_PORT}"
     volumes:
       - ./data/postgres:/var/lib/postgresql/data
+    networks:
+      - private_network
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U broker"]
+      test: ["CMD-SHELL", "pg_isready -d ${POSTGRES_DB} -U ${POSTGRES_USER}"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -36,6 +38,9 @@ services:
       postgres:
         condition: service_healthy
     restart: unless-stopped
+    networks:
+      - private_network
+      - public_network
 
 
   # The event bus service is created using Redis
@@ -49,8 +54,8 @@ services:
     command: redis-server --save 60 1 --loglevel warning 
     networks:
       - private_network
-    ports:
-      - "${REDIS_PORT}:${REDIS_PORT}"
+    expose:
+      - "${REDIS_PORT}"
     volumes:
       - ~/data/redis:/data
     restart: always
