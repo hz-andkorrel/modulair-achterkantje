@@ -3,14 +3,14 @@ FROM golang:1.21-alpine AS builder
 WORKDIR /app
 
 # Copy go mod files
-COPY broker/go.mod broker/go.sum ./
+COPY ./go.* ./
 RUN go mod download
 
 # Copy source code
-COPY broker/ ./
+COPY ./* ./
 
 # Build the application
-RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o broker .
+RUN go build -o broker .
 
 # Final stage
 FROM alpine:latest

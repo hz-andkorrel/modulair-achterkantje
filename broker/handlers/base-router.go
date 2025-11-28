@@ -1,9 +1,10 @@
-package infrastructure
+package handlers
 
 import (
-	"hotelhub/broker/internal/handlers"
 	"hotelhub/broker/middleware"
+	"hotelhub/broker/repository"
 	"hotelhub/broker/services"
+	"log"
 
 	"github.com/gin-gonic/gin"
 )
@@ -18,40 +19,24 @@ type Router struct {
 
 // NewRouter initializes a new Router instance with the provided configuration and JWT service.
 // It sets up the Gin engine, applies middleware, and configures the API routes.
-func NewRouter(configuration *services.Configuration, jwtService *services.JwtService) *Router {
+func NewRouter(configuration *services.Configuration, jwtService *services.JwtService, repository *repository.RepositoryStrategy) *Router {
 	gin.SetMode(gin.ReleaseMode)
 	engine := gin.New()
 
 	engine.Use(gin.Recovery())
 	engine.Use(middleware.RequestLogging())
 
-	setupV1(engine, jwtService)
+	NewStatusHandler(repository).RegisterRoutes(engine, jwtService)
+	NewAuthHandler(repository).RegisterRoutes(engine, jwtService)
 
 	return &Router{
 		engine: engine,
+		port:   configuration.ServerPort,
 	}
 }
 
 // Run starts the HTTP server on the configured port.
 func (router *Router) Run() {
+	log.Println("[Router] Starting server on port", router.port)
 	router.engine.Run(":" + router.port)
-}
-
-// Helper functions for setting up the routes for version 1 of the API.
-func setupV1(engine *gin.Engine, jwtManager *services.JwtService) {
-	v1 := engine.Group("/api/v1")
-	{
-		v1.GET("/health", handlers.CheckPluginsHealth)
-
-		v1.GET("/plugin", handlers.ListPlugins)
-		v1.POST("/plugin", handlers.RegisterPlugin)
-		v1.PUT("/plugin/:slug", handlers.UpdatePlugin)
-		v1.DELETE("/plugin/:slug", handlers.DeletePlugin)
-
-		auth := v1.Group("/auth")
-		{
-			auth.POST("/register", handlers.Register(nil, jwtManager))
-			auth.POST("/login", handlers.Login(nil, jwtManager))
-		}
-	}
 }

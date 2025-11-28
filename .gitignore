@@ -16,3 +16,6 @@
 # DS_Store files are created by macOS, and Thumbs.db files are created by Windows.
 .DS_Store
 Thumbs.db
+
+# Persistent storage for the application should not be committed.
+data/

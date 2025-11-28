@@ -1,597 +1,88 @@
-# Broker Service
+# HotelHub: Backend (Modulair Achterkantje)
 
-A modular broker service with plugin registration and reverse proxy capabilities.
+This repository contains the backend code for the HotelHub.
+The broker is the main component of the hub and manages communications between the front-end and various plugins.
+An eventbus is used to facilitate communication between different plugins in a decoupled manner.
+This allows plugins to respond to each other's events without direct dependencies.
 
-## Features
 
-- **Plugin Registration API**: Services can register themselves to receive routed traffic
-- **Reverse Proxy**: Automatically forwards requests to registered plugins based on route matching
-- **JWT Authentication**: Secure plugin registration and optional endpoint authentication
-- **Token Revocation**: Revoke individual or all user tokens with database persistence
-- **Automatic Cleanup**: Background job removes expired tokens every hour
-- **Graceful Shutdown**: Properly closes database connections and completes in-flight requests
-- **Request Logging**: Structured logging of all requests with status, duration, and client IP
-- **Health Checks**: Monitor plugin availability and response times
-- **Timeout Handling**: Configurable timeouts for plugin requests with detailed error responses
-- **Rate Limiting**: Protect against abuse with configurable per-IP rate limits
-- **Status Endpoint**: Health check with optional user information
-- **Persistent Storage**: Plugin registrations are saved to disk and reloaded on startup
+## Development Environment
 
-## Architecture
+The development environment is containerized using Docker Compose only.
+This allows for easy setup and teardown of the development environment, including extra tools.
+One of these tools is `pgadmin`, a web-based database management tool for PostgreSQL.
 
-The broker acts as a central gateway that:
-1. **Accepts plugin registrations** via `POST /api/v1/route`
-2. **Routes incoming requests** to the appropriate plugin based on `base-api-route`
-3. **Forwards requests** using a reverse proxy to the plugin's `host` URL
 
-```
-┌──────────────┐
-│ User/Client  │
-└──────┬───────┘
-       │
-       ▼
-┌──────────────────────┐
-│  Broker Service      │
-│  (localhost:8081)    │
-│                      │
-│  - Plugin Registry   │
-│  - Reverse Proxy     │
-│  - JWT Auth          │
-└──────┬───────────────┘
-       │
-       ├─────────────────┐
-       ▼                 ▼
-┌─────────────┐   ┌─────────────┐
-│ InternalAPI │   │  Other      │
-│ :8080       │   │  Plugins    │
-│ /api/v1/*   │   │  /plugin/*  │
-└─────────────┘   └─────────────┘
-```
+### Running the Development Environment
 
-## API Endpoints
-
-### Plugin Management (requires JWT authentication)
-
-#### `POST /api/v1/route` - Register a plugin
-
-Plugins register themselves with the broker to receive traffic.
-
-**Request Body:**
-```json
-{
-  "slug": "internal-api",
-  "name": "Hotel Internal API",
-  "version": "2.0.0",
-  "description": "Gateway for user portal and admin services",
-  "category": "gateway",
-  "host": "http://localhost:8080",
-  "base-api-route": "/api/v1",
-  "settings-route": "/admin/system/stats",
-  "api-routes": ["/api/v1/albums", "/api/auth/login", "/health"],
-  "enabled": true
-}
-```
-
-**Response:**
-```json
-{
-  "message": "plugin registered",
-  "plugin": { ... }
-}
-```
-
-#### `GET /api/v1/routes` - List all registered plugins
-
-**Response:**
-```json
-{
-  "plugins": [
-    {
-      "slug": "internal-api",
-      "name": "Hotel Internal API",
-      "category": "gateway",
-      "host": "http://localhost:8080",
-      "base-api-route": "/api/v1",
-      "enabled": true
-    }
-  ]
-}
-```
-
-#### `GET /api/v1/routes/categories` - List all plugin categories
-
-**Response:**
-```json
-{
-  "categories": [
-    {
-      "category": "gateway",
-      "count": 1
-    },
-    {
-      "category": "user-interface",
-      "count": 2
-    }
-  ],
-  "total": 2
-}
-```
-
-#### `GET /api/v1/routes/category/:category` - List plugins by category
-
-**Response:**
-```json
-{
-  "category": "user-interface",
-  "count": 2,
-  "plugins": [
-    {
-      "slug": "kiosk",
-      "name": "Kiosk Plug-in",
-      "category": "user-interface",
-      "host": "http://localhost:8080",
-      "base-api-route": "/kiosk",
-      "enabled": true
-    }
-  ]
-}
-```
-
-#### `PUT /api/v1/route/:slug` - Update a plugin (requires JWT)
-
-#### `DELETE /api/v1/route/:slug` - Delete a plugin (requires JWT)
-
-### Authentication Endpoints
-
-#### `POST /api/v1/auth/revoke` - Revoke current token (requires JWT)
-
-Revokes the token used in the request.
-
-**Response:**
-```json
-{
-  "message": "token revoked successfully"
-}
-```
-
-#### `POST /api/v1/auth/revoke-all` - Revoke all user tokens (requires JWT)
-
-Revokes all tokens for the current user.
-
-**Response:**
-```json
-{
-  "message": "all tokens revoked successfully"
-}
-```
-
-### Admin Endpoints
-
-#### `POST /api/v1/admin/cleanup-tokens` - Cleanup expired tokens (requires JWT)
-
-Manually triggers cleanup of expired tokens from the database.
-
-**Response:**
-```json
-{
-  "message": "cleanup completed",
-  "deleted": 42
-}
-```
-
-### Health Check Endpoints
-
-#### `GET /api/v1/health/plugins` - Check plugin health
-
-Checks the health status of all registered plugins.
-
-**Response:**
-```json
-{
-  "status": "healthy",
-  "checked": 3,
-  "healthy": 2,
-  "plugins": [
-    {
-      "slug": "internal-api",
-      "name": "Hotel Internal API",
-      "host": "http://localhost:8080",
-      "status": "healthy",
-      "response_time_ms": 45000000
-    },
-    {
-      "slug": "kiosk",
-      "name": "Kiosk Plugin",
-      "host": "http://localhost:9000",
-      "status": "unhealthy",
-      "error": "dial tcp: connection refused"
-    },
-    {
-      "slug": "analytics",
-      "name": "Analytics Service",
-      "host": "http://localhost:9001",
-      "status": "disabled"
-    }
-  ]
-}
-```
-
-**Status values:**
-- `healthy` - All plugins responding
-- `degraded` - Some plugins down
-- `unhealthy` - No plugins responding
-
-**Plugin status:**
-- `healthy` - Plugin is reachable
-- `unhealthy` - Plugin is not responding
-- `disabled` - Plugin is disabled in configuration
-
-### Status Endpoint
-
-#### `GET /api/v1/status` - Service status
-
-**Without authentication:**
-```json
-{
-  "status": "healthy",
-  "timestamp": "2025-11-17T10:44:00Z",
-  "version": "1.0.0",
-  "authenticated": false
-}
-```
-
-**With JWT token:**
-```json
-{
-  "status": "healthy",
-  "timestamp": "2025-11-17T10:44:00Z",
-  "version": "1.0.0",
-  "authenticated": true,
-  "user": {
-    "id": "user-id-here",
-    "email": "admin@example.com"
-  }
-}
-```
-
-### Reverse Proxy
-
-All requests that don't match broker-specific routes are forwarded to registered plugins:
+The development environment can be started using Docker Compose.
+It uses the `compose.dev.yml` configuration file.
+The containers are configured to build the application internally through volumes.
+Removing the need to rebuild the Docker images after every code change.
+To start the development environment, run the following command:
 
 ```bash
-# Request to broker
-curl http://localhost:8081/api/v1/albums
-
-# Broker finds plugin with base-api-route="/api/v1"
-# Forwards to: http://localhost:8080/api/v1/albums
+docker-compose -f compose.dev.yml up 
 ```
 
-## Integration with InternalAPI
+There are three services defined in the `compose.dev.yml` file.
+`postgres` is the database service, `broker` and `eventbus` speak for themselves.
+The `pgAdmin` container does not run it's service in root mode.
+This mean that it might be necessary to grant permission from the host machine in order to make it work.
 
-InternalAPI automatically registers with the broker on startup. The implementation is in InternalAPI's `/internal/broker/register.go`.
+```bash
+sudo chown -R 5050:5050 data/pgadmin_dev
+```
 
-### Environment Variables for InternalAPI
+### Maintaining the database
 
-Add these to your InternalAPI service:
+To **recreate the database** and start fresh, the folder `data/postgres_dev` should be deleted.
+Emptying this folder is not sufficient, as Postgres keeps some metadata files that will prevent a clean start.
 
-- `BROKER_URL`: URL of the broker service (default: `http://localhost:8081`)
-- `BROKER_AUTH_TOKEN`: JWT token for authenticating with the broker
 
-### Registration on Startup
+### Accessing pgAdmin
 
-Plugins should register themselves when they start:
+After running the development environment, pgAdmin can be accessed via a web browser.
+By default, it is available at `http://localhost:8080`.
+The default login credentials are: `admin@admin.com` and password `admin`.
+From this point, a new server connection can be created to connect to the Postgres database.
+
+
+### Authentication and Authorization
+
+The backend uses JWT (JSON Web Tokens) for authentication and authorization.
+Users can log in using their credentials, and upon successful authentication, they receive a JWT token.
+The token is generated by sending a POST request to the `/auth` endpoint with the user's credentials as post form data.
+The response will look something like:
+
+```json
+{
+    "expires_at": "2025-11-26T12:44:37.583752433Z",
+    "token": "very.long.jwt.token.here"
+}
+```
+
+When making requests to protected endpoints, the JWT token must be included in the `Authorization` header.
+The token should be prefixed with the word `Bearer `, like so:
+
+```
+Authorization: Bearer very.long.jwt.token.here
+```
+
+Using JWT in the back-end is as simple as adding the middleware to the router.
+For this purpose, the JwtMiddleware function is provided.
+Let's explain this through the status method below.
+In the middleware, the first parameter is the JWT service that handles token validation.
+The second parameter is the instance of the repository strategy for retrieving information for the database.
+The last parameter indicates whether the authentication is mandatory for this endpoint.
 
 ```go
-func RegisterWithBroker() error {
-    // InternalAPI automatically calls broker.RegisterWithBroker(cfg.Host, cfg.Port)
-    // This sends a POST to broker's /api/v1/route endpoint with plugin metadata
-    // See InternalAPI/internal/broker/register.go for implementation
-}
+engine.GET("/status", middleware.JwtMiddleware(jwt, handler.repository, false), handler.getStatus())
 ```
 
-## Configuration
+The logout endpoint requires authentication through the middleware, as it invalidates the token.
+The process is initiated by sending a DELETE request to the `/auth` endpoint.
+The process changes the revoked status of the token in the database to true.
 
-### Environment Variables
 
-**Server Settings:**
-- `BROKER_PORT`: Service port (default: `8081`)
-- `APP_VERSION`: Application version (default: `1.0.0`)
 
-**JWT Settings:**
-- `JWT_EXPIRY`: Token validity duration (default: `10m`)
-- `JWT_ISSUER`: JWT issuer name (default: `broker-service`)
-
-**Proxy Settings:**
-- `PROXY_TIMEOUT`: Timeout for plugin requests (default: `30s`)
-  - Examples: `10s`, `1m`, `90s`
-
-**Rate Limiting:**
-- `RATE_LIMIT_ENABLED`: Enable rate limiting (default: `true`)
-- `RATE_LIMIT_MAX_REQUESTS`: Max requests per window (default: `100`)
-- `RATE_LIMIT_WINDOW`: Time window for rate limiting (default: `1m`)
-  - Examples: `30s`, `1m`, `5m`
-
-**Plugin Persistence:**
-- `PLUGINS_PERSIST_PATH`: Plugin storage file path (default: `data/plugins.json`)
-
-**Database Settings:**
-- `DATABASE_URL`: PostgreSQL connection string (optional)
-  - Format: `postgres://username:password@host:port/database?sslmode=disable`
-  - Leave empty to disable token persistence to database
-  - Example: `postgres://broker:broker123@localhost:5432/broker_db?sslmode=disable`
-
-### Database Setup
-
-The broker can persist JWT tokens to PostgreSQL for:
-- Token revocation
-- Audit trail
-- Cross-instance token validation
-- User session management
-
-**1. Start PostgreSQL (using Docker):**
-```bash
-docker-compose up -d postgres
-```
-
-**2. Configure DATABASE_URL:**
-```bash
-export DATABASE_URL="postgres://broker:broker123@localhost:5432/broker_db?sslmode=disable"
-```
-
-**3. Start the broker:**
-The broker will automatically create the required tables on startup.
-
-**Database Schema:**
-- `tokens` table: Stores all issued JWT tokens
-  - `id`: Primary key
-  - `token`: Full JWT token string
-  - `subject`: User identifier
-  - `issued_at`: Token issue timestamp
-  - `expires_at`: Token expiration timestamp
-  - `revoked`: Revocation status
-  - `created_at`: Record creation timestamp
-
-**Manual Migration:**
-If you prefer to run migrations manually:
-```bash
-psql $DATABASE_URL -f migrations/001_create_tokens_table.sql
-psql $DATABASE_URL -f migrations/002_cleanup_function.sql
-```
-
-## Getting Started
-
-### Option 1: Local Development (without database)
-
-```bash
-cd broker
-go mod download
-go run main.go
-```
-
-### Option 2: With PostgreSQL Database
-
-**Using Docker Compose:**
-```bash
-# Start both PostgreSQL and broker
-docker-compose up -d
-
-# View logs
-docker-compose logs -f broker
-
-# Stop services
-docker-compose down
-```
-
-**Manual Setup:**
-```bash
-# 1. Start PostgreSQL
-docker run -d \
-  --name broker-postgres \
-  -e POSTGRES_USER=broker \
-  -e POSTGRES_PASSWORD=broker123 \
-  -e POSTGRES_DB=broker_db \
-  -p 5432:5432 \
-  postgres:16-alpine
-
-# 2. Configure environment
-export DATABASE_URL="postgres://broker:broker123@localhost:5432/broker_db?sslmode=disable"
-
-# 3. Start broker
-cd broker
-go run main.go
-```
-
-### Start InternalAPI and Register
-
-```bash
-# Terminal 1: Start InternalAPI
-cd ../InternalAPI
-export BROKER_URL="http://localhost:8081"
-export BROKER_AUTH_TOKEN="your-jwt-token"
-go run main.go
-
-# InternalAPI will automatically register with the broker on startup
-# You should see: "✓ Successfully registered with broker"
-```
-
-### Test the Integration
-
-```bash
-# Request via broker - gets proxied to InternalAPI
-curl http://localhost:8081/api/v1/albums \
-  -H "Authorization: Bearer YOUR_JWT_TOKEN"
-
-# Direct request to InternalAPI (bypasses broker)
-curl http://localhost:8080/api/v1/albums \
-  -H "Authorization: Bearer YOUR_JWT_TOKEN"
-```
-
-## Development
-
-### Run Tests
-
-```bash
-cd broker
-go test ./...
-```
-
-### Build
-
-```bash
-cd broker
-go build -o broker.exe .
-```
-
-### Graceful Shutdown
-
-The broker handles shutdown signals gracefully:
-
-```bash
-# Press Ctrl+C to trigger graceful shutdown
-# Or send SIGTERM signal:
-# kill -SIGTERM <pid>
-```
-
-**Shutdown process:**
-1. Stops accepting new connections
-2. Completes in-flight requests (up to 30 seconds)
-3. Stops background cleanup job
-4. Closes database connections
-5. Exits cleanly
-
-**Docker:**
-```bash
-docker-compose down  # Sends SIGTERM, triggers graceful shutdown
-```
-
-## Logging
-
-The broker logs all requests with detailed information:
-
-**Request Log Format:**
-```
-[REQUEST] 200 |     1.234ms |      127.0.0.1 | GET     /api/v1/status
-[REQUEST] 201 |    12.456ms |      127.0.0.1 | POST    /api/v1/route
-[PROXY] Forwarding to plugin 'internal-api' at http://localhost:8080
-[REQUEST] 200 |   123.789ms |      127.0.0.1 | GET     /api/v1/albums
-```
-
-**Log includes:**
-- HTTP status code
-- Request duration
-- Client IP address
-- HTTP method and path
-- Proxy forwarding details
-- Error messages (if any)
-
-**Example output:**
-```
-2025-11-19T10:30:15 Broker service starting on :8081
-2025-11-19T10:30:20 [REQUEST] 200 |      2.145ms |   192.168.1.100 | GET     /api/v1/status
-2025-11-19T10:30:25 [PROXY] Forwarding to plugin 'kiosk' at http://localhost:9000
-2025-11-19T10:30:25 [REQUEST] 200 |     45.678ms |   192.168.1.100 | GET     /kiosk/welcome
-2025-11-19T10:30:30 [PROXY ERROR] Plugin 'internal-api' failed: dial tcp: connection refused
-2025-11-19T10:30:30 [REQUEST] 502 |     10.234ms |   192.168.1.100 | GET     /api/v1/albums
-```
-
-## Rate Limiting
-
-The broker includes built-in rate limiting to prevent abuse and ensure fair usage.
-
-### How It Works
-
-- **Token Bucket Algorithm**: Each IP address gets a bucket of tokens
-- **Refill Rate**: Tokens are refilled continuously based on the configured rate
-- **Per-IP Limiting**: Each client IP is tracked independently
-- **Automatic Cleanup**: Old buckets are cleaned up every 5 minutes to prevent memory leaks
-
-### Configuration
-
-```bash
-# Enable/disable rate limiting
-RATE_LIMIT_ENABLED=true
-
-# Allow 100 requests per minute per IP
-RATE_LIMIT_MAX_REQUESTS=100
-RATE_LIMIT_WINDOW=1m
-```
-
-### Rate Limit Response
-
-When rate limit is exceeded:
-
-**Status:** `429 Too Many Requests`
-
-```json
-{
-  "error": "rate_limit_exceeded",
-  "message": "Too many requests. Please try again later.",
-  "retry_after": 60
-}
-```
-
-### Recommended Settings
-
-| Environment | Max Requests | Window | Use Case |
-|-------------|--------------|--------|----------|
-| Development | 1000 | 1m | Local testing, no restrictions |
-| Staging | 100 | 1m | Similar to production |
-| Production | 60 | 1m | Standard API usage |
-| Production (strict) | 30 | 1m | High security requirements |
-| Production (generous) | 200 | 1m | High traffic applications |
-
-### Disabling Rate Limiting
-
-```bash
-RATE_LIMIT_ENABLED=false
-```
-
-Or set very high limits:
-```bash
-RATE_LIMIT_MAX_REQUESTS=10000
-RATE_LIMIT_WINDOW=1m
-```
-
-## Proxy Error Handling
-
-The broker provides detailed error responses for proxy failures:
-
-### Timeout Errors (504 Gateway Timeout)
-```json
-{
-  "error": "timeout",
-  "message": "plugin request failed",
-  "plugin": "internal-api",
-  "plugin_host": "http://localhost:8080",
-  "details": "context deadline exceeded"
-}
-```
-
-### Connection Refused (503 Service Unavailable)
-```json
-{
-  "error": "connection_refused",
-  "message": "plugin request failed",
-  "plugin": "kiosk",
-  "plugin_host": "http://localhost:9000",
-  "details": "dial tcp: connection refused"
-}
-```
-
-### DNS Errors (502 Bad Gateway)
-```json
-{
-  "error": "dns_error",
-  "message": "plugin request failed",
-  "plugin": "external-service",
-  "plugin_host": "http://nonexistent.local",
-  "details": "no such host"
-}
-```
-
-**Proxy Configuration:**
-- Default timeout: 30 seconds (configurable via `PROXY_TIMEOUT`)
-- Connection timeout: 10 seconds
-- Keep-alive: 30 seconds
-- Idle connection timeout: 90 seconds
-- Max idle connections: 100
