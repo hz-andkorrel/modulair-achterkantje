@@ -6,6 +6,7 @@ import (
 	"hotelhub/broker/services"
 	"log"
 
+	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 )
 
@@ -23,6 +24,7 @@ func NewRouter(configuration *services.Configuration, jwtService *services.JwtSe
 	gin.SetMode(gin.ReleaseMode)
 	engine := gin.New()
 
+	engine.Use(cors.Default())
 	engine.Use(gin.Recovery())
 	engine.Use(middleware.RequestLogging())
 

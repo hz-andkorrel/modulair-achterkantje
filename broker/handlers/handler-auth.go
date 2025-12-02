@@ -31,17 +31,21 @@ func (handler *AuthHandler) RegisterRoutes(engine *gin.Engine, jwtService *servi
 // The login handler processes user login requests.
 // It should validate user credentials and issue a JWT token upon successful authentication.
 func (handler *AuthHandler) login(jwtService *services.JwtService) gin.HandlerFunc {
-	return func(context *gin.Context) {
-		username := context.PostForm("username")
-		password := context.PostForm("password")
+	type LoginRequest struct {
+		Username string `json:"username" binding:"required"`
+		Password string `json:"password" binding:"required"`
+	}
 
-		if username == "" || password == "" {
+	return func(context *gin.Context) {
+		var request LoginRequest
+		err := context.ShouldBindJSON(&request)
+		if err != nil || request.Username == "" || request.Password == "" {
 			context.JSON(400, gin.H{"error": "Username and password are required"})
 			return
 		}
 
-		user := handler.repository.UserRepository.Get(username)
-		if user == nil || !user.ValidatePassword(password) {
+		user := handler.repository.UserRepository.Get(request.Username)
+		if user == nil || !user.ValidatePassword(request.Password) {
 			context.JSON(401, gin.H{"error": "Invalid credentials"})
 			return
 		}
