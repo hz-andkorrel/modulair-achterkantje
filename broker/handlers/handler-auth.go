@@ -32,8 +32,8 @@ func (handler *AuthHandler) RegisterRoutes(engine *gin.Engine, jwtService *servi
 // It should validate user credentials and issue a JWT token upon successful authentication.
 func (handler *AuthHandler) login(jwtService *services.JwtService) gin.HandlerFunc {
 	type LoginRequest struct {
-		Username string `form:"username" binding:"required"`
-		Password string `form:"password" binding:"required"`
+		Username string `json:"username" binding:"required"`
+		Password string `json:"password" binding:"required"`
 	}
 
 	return func(context *gin.Context) {

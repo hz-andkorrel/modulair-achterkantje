@@ -21,7 +21,7 @@ func NewPostgresUserRepository(database *services.Postgres) BaseUserRepository {
 }
 
 // Get retrieves a user by their username or email from the Postgres database.
-// This field corresponds to the 'id' column in the 'users' table.
+// This fields corresponds to the 'id' and 'email' column in the 'users' table respectively.
 // If the user is found, it returns a pointer to a domain.User struct; otherwise, it returns nil.
 // Errors are logged for debugging purposes.
 func (repo *PostgresUserRepository) Get(username string) *domain.User {
