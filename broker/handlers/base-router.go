@@ -23,8 +23,15 @@ type Router struct {
 func NewRouter(configuration *services.Configuration, jwtService *services.JwtService, repository *repository.RepositoryStrategy) *Router {
 	gin.SetMode(gin.ReleaseMode)
 	engine := gin.New()
+	corsSettings := cors.New(cors.Config{
+		AllowAllOrigins:  true,
+		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
+		AllowHeaders:     []string{"Origin", "Content-Type", "Authorization", "Access-Control-Request-Headers"},
+		ExposeHeaders:    []string{"Content-Length"},
+		AllowCredentials: true,
+	})
 
-	engine.Use(cors.Default())
+	engine.Use(corsSettings)
 	engine.Use(gin.Recovery())
 	engine.Use(middleware.RequestLogging())
 

@@ -61,6 +61,7 @@ func (handler *AuthHandler) login(jwtService *services.JwtService) gin.HandlerFu
 
 // The logout handler processes user logout requests.
 // It invalidates the provided JWT token by setting it as revoked in the repository.
+// The handler returns a JSON object with a result field indicating success or failure.
 func (handler *AuthHandler) logout() gin.HandlerFunc {
 	return func(context *gin.Context) {
 		authHeader := context.GetHeader("Authorization")
@@ -68,10 +69,10 @@ func (handler *AuthHandler) logout() gin.HandlerFunc {
 
 		status := handler.repository.JwtRepository.Delete(token)
 		if !status {
-			context.JSON(400, gin.H{"error": "Logout failed"})
+			context.JSON(400, gin.H{"result": false})
 			return
 		}
 
-		context.JSON(200, gin.H{"message": "Logout successful"})
+		context.JSON(200, gin.H{"result": true})
 	}
 }
