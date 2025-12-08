@@ -13,4 +13,7 @@ type Plugin struct {
 	SettingsRoute string   `json:"settings-route"`
 	APIRoutes     []string `json:"api-routes"`
 	Enabled       bool     `json:"enabled"`
+
+	ContainerID string `json:"-"`
+	ImageName   string `json:"-"`
 }
