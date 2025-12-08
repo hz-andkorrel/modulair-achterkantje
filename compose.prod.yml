@@ -8,8 +8,8 @@ services:
     container_name: hotelhub-postgres
     env_file:
       - ".env"
-    ports:
-      - "${DATABASE_PORT}:${DATABASE_PORT}"
+    expose:
+      - "5432"
     volumes:
       - ./data/postgres:/var/lib/postgresql/data
     networks:
@@ -31,7 +31,7 @@ services:
     env_file:
       - ".env"
     ports:
-      - "${BROKER_PORT}:${BROKER_PORT}"
+      - "8080:${BROKER_PORT}"
     volumes:
       - ./data/broker:/data
     depends_on:
@@ -55,7 +55,7 @@ services:
     networks:
       - private_network
     expose:
-      - "${REDIS_PORT}"
+      - "6379"
     volumes:
       - ~/data/redis:/data
     restart: always
