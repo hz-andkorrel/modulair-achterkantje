@@ -37,6 +37,7 @@ func NewRouter(configuration *services.Configuration, jwtService *services.JwtSe
 
 	NewStatusHandler(repository).RegisterRoutes(engine, jwtService)
 	NewAuthHandler(repository).RegisterRoutes(engine, jwtService)
+	NewPluginHandler(repository).RegisterRoutes(engine, jwtService)
 	NewUserHandler(repository).RegisterRoutes(engine, jwtService)
 
 	return &Router{
