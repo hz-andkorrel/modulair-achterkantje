@@ -26,7 +26,7 @@ func NewUserHandler(repository *repository.RepositoryStrategy) BaseHandler {
 // RegisterRoutes registers the authentication routes with the provided Gin engine.
 // The auth endpoint supports login (POST) and logout (DELETE) operations.
 func (handler *UserHandler) RegisterRoutes(engine *gin.Engine, jwtService *services.JwtService) {
-	engine.POST("/user", middleware.JwtMiddleware(jwtService, handler.repository, true), handler.register())
+	engine.POST("/user", middleware.JwtMiddleware(jwtService, handler.repository, "admin"), handler.register())
 }
 
 // A user should be created upon registration by an administrator.

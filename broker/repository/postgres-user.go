@@ -42,7 +42,7 @@ func (repo *PostgresUserRepository) Create(user *domain.User) *domain.User {
 // Errors are logged for debugging purposes.
 func (repo *PostgresUserRepository) Get(username string) *domain.User {
 	var user domain.User
-	query := "SELECT email, name, password_hash, role, enabled FROM users WHERE id = $1 OR email = $1"
+	query := "SELECT email, name, password_hash, role, enabled FROM users WHERE email = $1"
 
 	row := repo.database.QueryRow(query, username)
 	if row == nil {
