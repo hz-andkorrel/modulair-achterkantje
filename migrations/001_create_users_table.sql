@@ -1,27 +1,20 @@
 -- Create users table for user management and authentication
 CREATE TABLE IF NOT EXISTS users (
-    id TEXT PRIMARY KEY,
-    email TEXT NOT NULL UNIQUE,
+    email TEXT NOT NULL PRIMARY KEY,
     name TEXT NOT NULL,
-    password_hash TEXT NOT NULL,
+    password_hash TEXT,
     role TEXT DEFAULT 'user',
     enabled BOOLEAN DEFAULT TRUE
 );
 
--- Create indexes for performance
-CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
-CREATE INDEX IF NOT EXISTS idx_users_role ON users(role);
-CREATE INDEX IF NOT EXISTS idx_users_enabled ON users(enabled);
-
 -- Create default admin user (password: 'admin123' - CHANGE THIS IN PRODUCTION!)
 -- Password hash generated with: bcrypt.GenerateFromPassword([]byte("admin123"), bcrypt.DefaultCost)
-INSERT INTO users (id, email, name, password_hash, role, enabled)
+INSERT INTO users (email, name, password_hash, role, enabled)
 VALUES (
-    'admin-001',
     'admin@example.com',
     'System Administrator',
     '$2a$10$RXUz3Sq2kiZ2NKZciHVnFuqFyPHgf1G6OIfiMJIeAJETmIi8yeBsu',
     'admin',
     true
 )
-ON CONFLICT (id) DO NOTHING;
+ON CONFLICT (email) DO NOTHING;
