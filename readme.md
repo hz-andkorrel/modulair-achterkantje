@@ -58,6 +58,7 @@ The response will look something like:
 ```json
 {
     "expires_at": "2025-11-26T12:44:37.583752433Z",
+    "role": "admin",
     "token": "very.long.jwt.token.here"
 }
 ```

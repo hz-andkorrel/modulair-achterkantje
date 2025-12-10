@@ -25,7 +25,7 @@ func NewAuthHandler(repository *repository.RepositoryStrategy) BaseHandler {
 // The auth endpoint supports login (POST) and logout (DELETE) operations.
 func (handler *AuthHandler) RegisterRoutes(engine *gin.Engine, jwtService *services.JwtService) {
 	engine.POST("/auth", handler.login(jwtService))
-	engine.DELETE("/auth", middleware.JwtMiddleware(jwtService, handler.repository, true), handler.logout())
+	engine.DELETE("/auth", middleware.JwtMiddleware(jwtService, handler.repository, "user"), handler.logout())
 }
 
 // The login handler processes user login requests.
@@ -54,6 +54,7 @@ func (handler *AuthHandler) login(jwtService *services.JwtService) gin.HandlerFu
 		handler.repository.JwtRepository.Add(token, user.Email, time)
 		context.JSON(200, gin.H{
 			"token":      token,
+			"role":       user.Role,
 			"expires_at": time,
 		})
 	}
