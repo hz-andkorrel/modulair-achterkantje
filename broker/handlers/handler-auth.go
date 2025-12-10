@@ -54,6 +54,7 @@ func (handler *AuthHandler) login(jwtService *services.JwtService) gin.HandlerFu
 		handler.repository.JwtRepository.Add(token, user.Id, time)
 		context.JSON(200, gin.H{
 			"token":      token,
+			"role":       user.Role,
 			"expires_at": time,
 		})
 	}
