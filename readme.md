@@ -85,4 +85,26 @@ The process is initiated by sending a DELETE request to the `/auth` endpoint.
 The process changes the revoked status of the token in the database to true.
 
 
+### User Management
 
+User management is handled through the `/user` endpoint.
+New users can be created by sending a POST request to this endpoint with the user's details in the request body.
+The request body should be in JSON format and include `email`, `name` and `role`.
+The role can be either `admin` or `user`, the email should be a valid email address.
+Example request body for creating a new user:
+
+```json
+{
+    "email": "test@tester.com",
+    "name": "Test Tester",
+    "role": "admin"
+}
+```
+
+A failed response will return a 400 code if the request body is invalid or missing required fields. 
+A 500 code indicates an issue with storing the user in the database.
+A successful response will return a 201 code along with the created user's email as raw text.
+
+```
+test@tester.com
+```

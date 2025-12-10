@@ -25,9 +25,9 @@ func NewPostgresUserRepository(database *services.Postgres) BaseUserRepository {
 // If the operation is successful, it returns the created user; otherwise, it returns nil.
 // Errors are logged for debugging purposes.
 func (repo *PostgresUserRepository) Create(user *domain.User) *domain.User {
-	query := "INSERT INTO users (email, name, password_hash, role, enabled) VALUES ($1, $2, $3, $4, $5, $6)"
+	query := "INSERT INTO users (email, name, role) VALUES ($1, $2, $3)"
 
-	err := repo.database.Execute(query, user.Email, user.Name, user.PasswordHash, user.Role, user.Enabled)
+	err := repo.database.Execute(query, user.Email, user.Name, user.Role)
 	if err == 0 {
 		log.Println("[Postgres] Error creating user:", user.Email)
 		return nil

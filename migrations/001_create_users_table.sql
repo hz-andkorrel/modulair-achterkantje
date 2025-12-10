@@ -9,7 +9,7 @@ CREATE TABLE IF NOT EXISTS users (
 
 -- Create default admin user (password: 'admin123' - CHANGE THIS IN PRODUCTION!)
 -- Password hash generated with: bcrypt.GenerateFromPassword([]byte("admin123"), bcrypt.DefaultCost)
-INSERT INTO users (id, email, name, password_hash, role, enabled)
+INSERT INTO users (email, name, password_hash, role, enabled)
 VALUES (
     'admin@example.com',
     'System Administrator',
