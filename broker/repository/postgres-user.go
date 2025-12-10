@@ -20,13 +20,29 @@ func NewPostgresUserRepository(database *services.Postgres) BaseUserRepository {
 	}
 }
 
+// Creating a new user in the Postgres database using an instance of domain.User.
+// The user's details are inserted into the 'users' table.
+// If the operation is successful, it returns the created user; otherwise, it returns nil.
+// Errors are logged for debugging purposes.
+func (repo *PostgresUserRepository) Create(user *domain.User) *domain.User {
+	query := "INSERT INTO users (email, name, password_hash, role, enabled) VALUES ($1, $2, $3, $4, $5, $6)"
+
+	err := repo.database.Execute(query, user.Email, user.Name, user.PasswordHash, user.Role, user.Enabled)
+	if err == 0 {
+		log.Println("[Postgres] Error creating user:", user.Email)
+		return nil
+	}
+
+	return user
+}
+
 // Get retrieves a user by their username or email from the Postgres database.
 // This fields corresponds to the 'id' and 'email' column in the 'users' table respectively.
 // If the user is found, it returns a pointer to a domain.User struct; otherwise, it returns nil.
 // Errors are logged for debugging purposes.
 func (repo *PostgresUserRepository) Get(username string) *domain.User {
 	var user domain.User
-	query := "SELECT id, email, name, password_hash, role, enabled FROM users WHERE id = $1 OR email = $1"
+	query := "SELECT email, name, password_hash, role, enabled FROM users WHERE id = $1 OR email = $1"
 
 	row := repo.database.QueryRow(query, username)
 	if row == nil {
@@ -34,7 +50,7 @@ func (repo *PostgresUserRepository) Get(username string) *domain.User {
 		return nil
 	}
 
-	err := row.Scan(&user.Id, &user.Email, &user.Name, &user.PasswordHash, &user.Role, &user.Enabled)
+	err := row.Scan(&user.Email, &user.Name, &user.PasswordHash, &user.Role, &user.Enabled)
 	if err != nil {
 		log.Println("[Postgres] Error scanning row:", err)
 		return nil

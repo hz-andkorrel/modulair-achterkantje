@@ -6,7 +6,6 @@ import (
 
 // A user in the system, with logic for authentication.
 type User struct {
-	Id           string
 	Email        string
 	Name         string
 	PasswordHash string
