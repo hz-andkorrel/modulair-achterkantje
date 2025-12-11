@@ -52,24 +52,25 @@ func (repo *PostgresJwtRepository) AddResetToken(token, subject string, expiresA
 
 // IsValid checks if a token is valid by checking its existence, expiration and revoke state.
 // It returns true if the token is valid; otherwise, it returns false.
-func (repo *PostgresJwtRepository) IsValid(token string) bool {
+func (repo *PostgresJwtRepository) IsValid(token string, tokenType string) bool {
 	var expiresAt time.Time
 	var revoked bool
+	var storedTokenType string
 
-	query := "SELECT expires_at, revoked FROM tokens WHERE token = $1"
+	query := "SELECT expires_at, revoked, type FROM tokens WHERE token = $1"
 	row := repo.database.QueryRow(query, token)
 	if row == nil {
 		log.Println("[Postgres] Cannot retrieve token:", token)
 		return false
 	}
 
-	err := row.Scan(&expiresAt, &revoked)
+	err := row.Scan(&expiresAt, &revoked, &storedTokenType)
 	if err != nil {
 		log.Println("[Postgres] Error scanning token row:", err)
 		return false
 	}
 
-	if revoked || time.Now().After(expiresAt) {
+	if revoked || time.Now().After(expiresAt) || tokenType != storedTokenType {
 		return false
 	}
 
