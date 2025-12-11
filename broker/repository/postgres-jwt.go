@@ -39,7 +39,7 @@ func (repo *PostgresJwtRepository) Add(token, subject string, expiresAt time.Tim
 // This field is automatically set to "reset" during insertion.
 // This makes it easy to distinguish between regular tokens and reset tokens.
 func (repo *PostgresJwtRepository) AddResetToken(token, subject string, expiresAt time.Time) bool {
-	query := "INSERT INTO reset_tokens (token, subject, expires_at, type) VALUES ($1, $2, $3, $4)"
+	query := "INSERT INTO tokens (token, subject, expires_at, type) VALUES ($1, $2, $3, $4)"
 
 	affectedRows := repo.database.Execute(query, token, subject, expiresAt, "reset")
 	if affectedRows == 0 {

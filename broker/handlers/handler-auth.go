@@ -25,7 +25,7 @@ func NewAuthHandler(repository *repository.RepositoryStrategy) BaseHandler {
 // The auth endpoint supports login (POST) and logout (DELETE) operations.
 func (handler *AuthHandler) RegisterRoutes(engine *gin.Engine, jwtService *services.JwtService) {
 	engine.POST("/auth", handler.login(jwtService))
-	engine.PUT("/auth", handler.resetPassword())
+	engine.PUT("/auth", handler.resetPassword(jwtService))
 	engine.DELETE("/auth", middleware.JwtMiddleware(jwtService, handler.repository, "user", "access"), handler.logout())
 }
 
@@ -61,9 +61,32 @@ func (handler *AuthHandler) login(jwtService *services.JwtService) gin.HandlerFu
 	}
 }
 
-func (handler *AuthHandler) resetPassword() gin.HandlerFunc {
+// The resetPassword handler processes password reset requests.
+// For security reasons, it does not disclose whether the email exists in the system.
+func (handler *AuthHandler) resetPassword(jwtService *services.JwtService) gin.HandlerFunc {
+	type ResetRequest struct {
+		Email string `json:"email" binding:"required"`
+	}
+
 	return func(context *gin.Context) {
-		// Implementation for password reset would go here.
+		var request ResetRequest
+		err := context.ShouldBindJSON(&request)
+		if err != nil || request.Email == "" {
+			context.Status(200)
+			return
+		}
+
+		user := handler.repository.UserRepository.Get(request.Email)
+		if user == nil {
+			context.Status(200)
+			return
+		}
+
+		token, time := jwtService.GenerateToken(user.Email)
+		handler.repository.JwtRepository.AddResetToken(token, user.Email, time)
+		context.JSON(200, gin.H{
+			"reset_token": token,
+		})
 	}
 }
 

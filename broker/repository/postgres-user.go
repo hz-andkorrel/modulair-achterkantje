@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"database/sql"
 	"hotelhub/broker/domain"
 	"hotelhub/broker/services"
 	"log"
@@ -42,6 +43,8 @@ func (repo *PostgresUserRepository) Create(user *domain.User) *domain.User {
 // Errors are logged for debugging purposes.
 func (repo *PostgresUserRepository) Get(username string) *domain.User {
 	var user domain.User
+	var passwordHash sql.NullString
+
 	query := "SELECT email, name, password_hash, role, enabled FROM users WHERE email = $1"
 
 	row := repo.database.QueryRow(query, username)
@@ -50,11 +53,12 @@ func (repo *PostgresUserRepository) Get(username string) *domain.User {
 		return nil
 	}
 
-	err := row.Scan(&user.Email, &user.Name, &user.PasswordHash, &user.Role, &user.Enabled)
+	err := row.Scan(&user.Email, &user.Name, &passwordHash, &user.Role, &user.Enabled)
 	if err != nil {
 		log.Println("[Postgres] Error scanning row:", err)
 		return nil
 	}
 
+	user.PasswordHash = passwordHash.String
 	return &user
 }
