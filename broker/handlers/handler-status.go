@@ -24,7 +24,7 @@ func NewStatusHandler(repository *repository.RepositoryStrategy) BaseHandler {
 
 // RegisterRoutes registers the status check route with the provided Gin engine.
 func (handler *StatusHandler) RegisterRoutes(engine *gin.Engine, jwt *services.JwtService) {
-	engine.GET("/status", middleware.JwtMiddleware(jwt, handler.repository, false), handler.getStatus())
+	engine.GET("/status", middleware.JwtMiddleware(jwt, handler.repository, ""), handler.getStatus())
 }
 
 // GetHandler returns the Gin handler function for the status check.
