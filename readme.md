@@ -8,13 +8,6 @@ This allows plugins to respond to each other's events without direct dependencie
 
 ## Development Environment
 
-The development environment is containerized using Docker Compose only.
-This allows for easy setup and teardown of the development environment, including extra tools.
-One of these tools is `pgadmin`, a web-based database management tool for PostgreSQL.
-
-
-### Running the Development Environment
-
 The development environment can be started using Docker Compose.
 It uses the `compose.dev.yml` configuration file.
 The containers are configured to build the application internally through volumes.
@@ -34,9 +27,19 @@ This mean that it might be necessary to grant permission from the host machine i
 sudo chown -R 5050:5050 data/pgadmin_dev
 ```
 
-### Maintaining the database
 
-To **recreate the database** and start fresh, the folder `data/postgres_dev` should be deleted.
+## The database
+
+The backend uses a Postgres database to store its data.
+The database schema is initialized during the startup of the `postgres` container.
+The initializations scripts are located it the `migrations` folder.
+During debugging, the `data/postgres_dev` folder is mounted as a volume,
+in production this shifts to `data/postgres`.
+
+
+### Refreshing the database
+
+To remove the current setup for the database, remove the folder `data/postgres_dev` of `data/postgres`.
 Emptying this folder is not sufficient, as Postgres keeps some metadata files that will prevent a clean start.
 
 
@@ -48,7 +51,13 @@ The default login credentials are: `admin@admin.com` and password `admin`.
 From this point, a new server connection can be created to connect to the Postgres database.
 
 
-### Authentication and Authorization
+## Authentication and User Management
+
+The backend provides endpoints for authentication and user management.
+This sections of the documentation is divided into two parts, reflecting the `/auth` and `/user` endpoints.
+
+
+### Authentication and Authorization (/auth)
 
 The backend uses JWT (JSON Web Tokens) for authentication and authorization.
 Users can log in using their credentials, and upon successful authentication, they receive a JWT token.
@@ -86,7 +95,7 @@ The process is initiated by sending a DELETE request to the `/auth` endpoint.
 The process changes the revoked status of the token in the database to true.
 
 
-### User Management
+### User Management (/user)
 
 User management is handled through the `/user` endpoint.
 New users can be created by sending a POST request to this endpoint with the user's details in the request body.

@@ -35,6 +35,21 @@ func (repo *PostgresJwtRepository) Add(token, subject string, expiresAt time.Tim
 	return true
 }
 
+// The reset token is stored in the same table with a different value for the "type" field.
+// This field is automatically set to "reset" during insertion.
+// This makes it easy to distinguish between regular tokens and reset tokens.
+func (repo *PostgresJwtRepository) AddResetToken(token, subject string, expiresAt time.Time) bool {
+	query := "INSERT INTO reset_tokens (token, subject, expires_at, type) VALUES ($1, $2, $3, $4)"
+
+	affectedRows := repo.database.Execute(query, token, subject, expiresAt, "reset")
+	if affectedRows == 0 {
+		log.Println("[Postgres] Cannot add reset token:", token)
+		return false
+	}
+
+	return true
+}
+
 // IsValid checks if a token is valid by checking its existence, expiration and revoke state.
 // It returns true if the token is valid; otherwise, it returns false.
 func (repo *PostgresJwtRepository) IsValid(token string) bool {
