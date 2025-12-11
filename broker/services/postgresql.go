@@ -19,6 +19,25 @@ func NewPostgres(configuration *Configuration) *Postgres {
 	}
 }
 
+// Query executes a query that returns multiple rows.
+// If an error occurs, it logs the error and returns nil.
+func (postgres *Postgres) Query(query string, args ...any) (*sql.Rows, error) {
+	db, err := sql.Open("postgres", postgres.connectionString)
+	if err != nil {
+		log.Println("[Postgres] cannot connect to database:", err)
+		return nil, err
+	}
+
+	defer db.Close()
+	rows, err := db.Query(query, args...)
+	if err != nil {
+		log.Println("[Postgres] cannot execute query:", err)
+		return nil, err
+	}
+
+	return rows, nil
+}
+
 // QueryRow executes a query that is expected to return at most one row.
 // If an error occurs, it logs the error and returns an empty row.
 func (postgres *Postgres) QueryRow(query string, args ...any) *sql.Row {

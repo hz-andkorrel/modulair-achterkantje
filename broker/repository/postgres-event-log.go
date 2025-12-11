@@ -31,24 +31,29 @@ func (repo *PostgresEventLogRepository) Add(ctx context.Context, log *domain.Eve
 	return nil
 }
 
-// Pak recent fucntie
+// GetRecent haalt de meest recente event logs op (limit aantal)
 func (repo *PostgresEventLogRepository) GetRecent(ctx context.Context, limit int) ([]*domain.EventLog, error) {
-	query := "SELECT id, channel, action, user_email, payload, plugin_slug, created_at FROM event_logs ORDER BY created_at DESC LIMIT 1"
+	query := "SELECT id, channel, action, user_email, payload, plugin_slug, created_at FROM event_logs ORDER BY created_at DESC LIMIT $1"
 
-	row := repo.database.QueryRow(query)
-	if row == nil {
-		log.Println("[Postgres] Cannot retrieve recent event log")
-		return []*domain.EventLog{}, nil
-	}
-
-	eventLog := &domain.EventLog{}
-	err := row.Scan(&eventLog.ID, &eventLog.Channel, &eventLog.Action, &eventLog.UserEmail, &eventLog.Payload, &eventLog.PluginSlug, &eventLog.CreatedAt)
+	rows, err := repo.database.Query(query, limit)
 	if err != nil {
-		log.Println("[Postgres] Error scanning event log row:", err)
-		return []*domain.EventLog{}, nil
+		log.Println("[Postgres] Cannot retrieve recent event logs:", err)
+		return []*domain.EventLog{}, err
+	}
+	defer rows.Close()
+
+	var events []*domain.EventLog
+	for rows.Next() {
+		eventLog := &domain.EventLog{}
+		err := rows.Scan(&eventLog.ID, &eventLog.Channel, &eventLog.Action, &eventLog.UserEmail, &eventLog.Payload, &eventLog.PluginSlug, &eventLog.CreatedAt)
+		if err != nil {
+			log.Println("[Postgres] Error scanning event log row:", err)
+			continue
+		}
+		events = append(events, eventLog)
 	}
 
-	return []*domain.EventLog{eventLog}, nil
+	return events, nil
 }
 
 // Count functie
