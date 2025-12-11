@@ -2,6 +2,7 @@ package main
 
 import (
 	"hotelhub/broker/handlers"
+	"hotelhub/broker/listener"
 	"hotelhub/broker/repository"
 	"hotelhub/broker/services"
 )
@@ -14,6 +15,9 @@ func main() {
 	jwtService := services.NewJwtService(configuration)
 	database := services.NewPostgres(configuration)
 	repositoryStrategy := repository.NewPostgresRepositoryStrategy(database)
+
+	eventlistener := listener.NewEventBusListener(repositoryStrategy)
+	go eventlistener.Start()
 
 	router := handlers.NewRouter(configuration, jwtService, repositoryStrategy)
 	router.Run()

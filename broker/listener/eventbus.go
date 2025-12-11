@@ -11,15 +11,11 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
-// EventBusListener listens to Redis eventbus and logs all events to the database.
-// It subscribes to the "events" and "hotel.events" channels.
 type EventBusListener struct {
 	redis      *redis.Client
 	repository *repository.RepositoryStrategy
 }
 
-// NewEventBusListener creates a new EventBus listener service.
-// It connects to Redis and requires a repository strategy for database operations.
 func NewEventBusListener(repository *repository.RepositoryStrategy) *EventBusListener {
 	client := redis.NewClient(&redis.Options{
 		Addr: "hotelhub-bus:6379",
@@ -32,8 +28,6 @@ func NewEventBusListener(repository *repository.RepositoryStrategy) *EventBusLis
 	}
 }
 
-// Start begins listening to the eventbus channels.
-// This is a blocking operation and should be run in a goroutine.
 func (listener *EventBusListener) Start() {
 	ctx := context.Background()
 
