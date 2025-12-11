@@ -9,6 +9,5 @@ type EventLog struct {
 	UserEmail  string    `json:"user_email"`
 	Payload    string    `json:"payload"`
 	PluginSlug string    `json:"plugin_slug"`
-	Timestamp  time.Time `json:"timestamp"`
 	CreatedAt  time.Time `json:"created_at"`
 }
