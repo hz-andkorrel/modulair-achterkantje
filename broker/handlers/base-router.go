@@ -38,7 +38,11 @@ func NewRouter(configuration *services.Configuration, jwtService *services.JwtSe
 	NewStatusHandler(repository).RegisterRoutes(engine, jwtService)
 	NewAuthHandler(repository).RegisterRoutes(engine, jwtService)
 	NewUserHandler(repository).RegisterRoutes(engine, jwtService)
+	NewPluginUploadHandler(configuration).RegisterRoutes(engine, jwtService)
 
+	for _, r := range engine.Routes() {
+		log.Printf("[ROUTE] %s %s\n", r.Method, r.Path)
+	}
 	return &Router{
 		engine: engine,
 		port:   configuration.ServerPort,

@@ -29,19 +29,27 @@ services:
   broker:
     image: golang:latest
     container_name: hotelhub-broker
-    working_dir: /app
+    working_dir: "/app"
     ports:
       - "8080:${BROKER_PORT}"
     volumes:
       - ./.env:/app/.env
       - ./broker:/app
+      - /var/run/docker.sock:/var/run/docker.sock
     depends_on:
       postgres:
         condition: service_healthy
-    entrypoint: ["sh", "-c", "go install github.com/mitranim/gow@latest && gow run main.go"]
+    entrypoint:
+      - sh
+      - -c
+      - |
+        apt-get update && apt-get install -y docker.io unzip &&
+        go install github.com/mitranim/gow@latest &&
+        gow run main.go
     networks:
       - private_network
       - public_network
+
 
 
   # The event bus service is created using Redis
