@@ -78,6 +78,7 @@ func (handler *UserHandler) register() gin.HandlerFunc {
 // It expects a JSON payload with the new password.
 // The function validates the presence of the password,
 // hashes it using bcrypt, and updates the user's password in the repository.
+// The token used for authentication is then invalidated.
 // If successful, it returns a success message with a 200 status code.
 func (handler *UserHandler) updatePassword() gin.HandlerFunc {
 	type PasswordUpdateRequest struct {
@@ -110,6 +111,8 @@ func (handler *UserHandler) updatePassword() gin.HandlerFunc {
 			return
 		}
 
+		token := context.GetHeader("Authorization")[len("Bearer "):]
+		handler.repository.JwtRepository.Delete(token)
 		context.JSON(200, gin.H{"message": "Password updated successfully"})
 	}
 }
