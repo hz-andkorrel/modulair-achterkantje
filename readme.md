@@ -97,8 +97,11 @@ The process changes the revoked status of the token in the database to true.
 
 ### User Management (/user)
 
+#### Creating a user
+
 User management is handled through the `/user` endpoint.
 New users can be created by sending a POST request to this endpoint with the user's details in the request body.
+Only administrators are authorized to create new users.
 The request body should be in JSON format and include `email`, `name` and `role`.
 The role can be either `admin` or `user`, the email should be a valid email address.
 Example request body for creating a new user:
@@ -117,4 +120,35 @@ A successful response will return a 201 code along with the created user's email
 
 ```
 test@tester.com
+```
+
+#### Setting and resetting a user's password
+
+The user should request a password reset to set their password before logging in.
+This is done through the `/auth` endpoint with a PUT request containing the user's email in the request body.
+Example request body for requesting a password reset:
+
+```json
+{
+    "email": "test@tester.com"
+}
+```
+
+The response will be a 200 code if the request is successful.
+The body will contain a reset token that the user can use to set their password.
+
+```json
+{
+    "reset_token": "reset.token.here"
+}
+```
+
+To set a password, a PUT request should be sent to the `/user` endpoint.
+The body should only contain the new password, since the request token is passed as a query parameter.
+The response will be a 200 code if the password is successfully set.
+
+```json
+{
+    "password": "new_secure_password"
+}
 ```
