@@ -43,7 +43,7 @@ services:
       - sh
       - -c
       - |
-        apt-get update && apt-get install -y docker.io unzip &&
+        apt-get update && apt-get install -y docker.io docker-compose unzip &&
         go install github.com/mitranim/gow@latest &&
         gow run main.go
     networks:
