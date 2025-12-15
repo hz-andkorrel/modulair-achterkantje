@@ -8,6 +8,7 @@ import (
 	"net/mail"
 
 	"github.com/gin-gonic/gin"
+	"golang.org/x/crypto/bcrypt"
 )
 
 // UserHandler is responsible for handling authentication-related routes.
@@ -23,10 +24,11 @@ func NewUserHandler(repository *repository.RepositoryStrategy) BaseHandler {
 	}
 }
 
-// RegisterRoutes registers the authentication routes with the provided Gin engine.
-// The auth endpoint supports login (POST) and logout (DELETE) operations.
+// RegisterRoutes registers the user-related routes with the provided Gin engine.
+// It sets up the routes for user registration and password update.
 func (handler *UserHandler) RegisterRoutes(engine *gin.Engine, jwtService *services.JwtService) {
-	engine.POST("/user", middleware.JwtMiddleware(jwtService, handler.repository, "admin"), handler.register())
+	engine.POST("/user", middleware.JwtMiddleware(jwtService, handler.repository, "admin", "access"), handler.register())
+	engine.PUT("/user", middleware.JwtMiddleware(jwtService, handler.repository, "user", "reset"), handler.updatePassword())
 }
 
 // A user should be created upon registration by an administrator.
@@ -69,5 +71,48 @@ func (handler *UserHandler) register() gin.HandlerFunc {
 		}
 
 		context.JSON(201, createdUser.Email)
+	}
+}
+
+// updatePassword allows a user to update their password.
+// It expects a JSON payload with the new password.
+// The function validates the presence of the password,
+// hashes it using bcrypt, and updates the user's password in the repository.
+// The token used for authentication is then invalidated.
+// If successful, it returns a success message with a 200 status code.
+func (handler *UserHandler) updatePassword() gin.HandlerFunc {
+	type PasswordUpdateRequest struct {
+		Password string `json:"password"`
+	}
+
+	return func(context *gin.Context) {
+		var request PasswordUpdateRequest
+		err := context.ShouldBindJSON(&request)
+		if err != nil {
+			context.JSON(400, gin.H{"error": "Invalid request payload"})
+			return
+		}
+
+		if request.Password == "" {
+			context.JSON(400, gin.H{"error": "Password cannot be empty"})
+			return
+		}
+
+		subject := context.GetString("user_id")
+		passwordHash, err := bcrypt.GenerateFromPassword([]byte("admin123"), bcrypt.DefaultCost)
+		if err != nil {
+			context.JSON(500, gin.H{"error": "Failed to hash password"})
+			return
+		}
+
+		updatedUser := handler.repository.UserRepository.Update(subject, string(passwordHash))
+		if updatedUser == nil {
+			context.JSON(500, gin.H{"error": "Failed to update password"})
+			return
+		}
+
+		token := context.GetHeader("Authorization")[len("Bearer "):]
+		handler.repository.JwtRepository.Delete(token)
+		context.JSON(200, gin.H{"message": "Password updated successfully"})
 	}
 }

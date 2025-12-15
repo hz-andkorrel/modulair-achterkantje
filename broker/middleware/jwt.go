@@ -15,7 +15,7 @@ import (
 // The 'minimal role' parameter can be used to enforce role-based access control.
 // Valid roles are "" for optional, "user" for all users and "admin" for administrators only.
 // Possible reasons are: missing header, invalid format, or token verification failure.
-func JwtMiddleware(jwtService *services.JwtService, repository *repository.RepositoryStrategy, minimalRole string) gin.HandlerFunc {
+func JwtMiddleware(jwtService *services.JwtService, repository *repository.RepositoryStrategy, minimalRole string, tokenType string) gin.HandlerFunc {
 	return func(context *gin.Context) {
 		required := minimalRole != ""
 		if minimalRole != "" && minimalRole != "user" && minimalRole != "admin" {
@@ -43,7 +43,7 @@ func JwtMiddleware(jwtService *services.JwtService, repository *repository.Repos
 			return
 		}
 
-		if !repository.JwtRepository.IsValid(token) {
+		if !repository.JwtRepository.IsValid(token, tokenType) {
 			authenticationError(context, "Token is revoked or expired", required)
 			return
 		}
