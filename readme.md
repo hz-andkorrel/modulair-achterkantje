@@ -51,6 +51,28 @@ The default login credentials are: `admin@admin.com` and password `admin`.
 From this point, a new server connection can be created to connect to the Postgres database.
 
 
+
+## Initialization
+
+The backend requires some initial setup before it can be used. 
+This can be achieved by sending a POST request to the `/initialize` endpoint.
+This endpoint sets up the initial administrator user and configures basic information.
+An example request body for initialization is as follows:
+
+```json
+{
+    "hotel_name": "Superior Hotel",
+    "admin_name": "Admin McAdminface",
+    "admin_email": "admin@superior-hotel.net",
+    "admin_password": "strong_password_123"
+}
+```
+
+A successful initialization will return a 200 status code.
+It will also login the newly created administrator user and provide a JWT token in the response body.
+See the Authentication section for more information on how the token is returned.
+
+
 ## Authentication and User Management
 
 The backend provides endpoints for authentication and user management.

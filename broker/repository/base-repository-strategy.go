@@ -9,6 +9,7 @@ type RepositoryStrategy struct {
 	JwtRepository    BaseJwtRepository
 	PluginRepository PluginRepository
 	UserRepository   BaseUserRepository
+	MetaRepository   BaseMetaRepository
 }
 
 // NewPostgresRepositoryStrategy creates a new RepositoryStrategy using Postgres repositories.
@@ -17,5 +18,6 @@ func NewPostgresRepositoryStrategy(postgres *services.Postgres) *RepositoryStrat
 	return &RepositoryStrategy{
 		UserRepository: NewPostgresUserRepository(postgres),
 		JwtRepository:  NewPostgresJwtRepository(postgres),
+		MetaRepository: NewPostgresMetaRepository(postgres),
 	}
 }
