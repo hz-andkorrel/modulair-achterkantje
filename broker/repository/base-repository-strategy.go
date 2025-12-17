@@ -18,6 +18,7 @@ func NewPostgresRepositoryStrategy(postgres *services.Postgres) *RepositoryStrat
 	return &RepositoryStrategy{
 		UserRepository:     NewPostgresUserRepository(postgres),
 		JwtRepository:      NewPostgresJwtRepository(postgres),
+		PluginRepository:   NewPostgresPluginRepository(postgres),
 		EventLogRepository: NewPostgresEventLogRepository(postgres),
 	}
 }
