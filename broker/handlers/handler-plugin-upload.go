@@ -32,6 +32,9 @@ func (h *PluginUploadHandler) RegisterRoutes(engine *gin.Engine, jwt *services.J
 	})
 
 	engine.POST("/plugin/upload", h.uploadAndDeploy())
+	engine.POST("/plugin/:id/start", h.startPlugin())
+	engine.POST("/plugin/:id/stop", h.stopPlugin())
+	engine.DELETE("/plugin/:id", h.deletePlugin())
 }
 
 func (h *PluginUploadHandler) uploadAndDeploy() gin.HandlerFunc {
@@ -389,4 +392,145 @@ func addNetworkToServices(lines []string) []string {
 	}
 
 	return result
+}
+
+// startPlugin starts the containers for an existing plugin.
+// POST /plugin/:id/start
+func (h *PluginUploadHandler) startPlugin() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		pluginID := c.Param("id")
+		if pluginID == "" {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "missing plugin id"})
+			return
+		}
+
+		slug := sanitizeSlug(pluginID)
+		if slug == "" {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid plugin id"})
+			return
+		}
+
+		pluginRoot := h.config.PluginDirectory
+		if strings.TrimSpace(pluginRoot) == "" {
+			pluginRoot = "./plugins"
+		}
+
+		pluginDir := filepath.Join(pluginRoot, slug)
+		composeDir, _, err := findComposeFile(pluginDir)
+		if err != nil {
+			c.JSON(http.StatusNotFound, gin.H{"error": "plugin not found", "details": err.Error()})
+			return
+		}
+
+		runtimeComposeFile := "docker-compose.runtime.yml"
+		projectName := "hotelhub-plugin-" + slug
+
+		if err := services.DockerComposeStart(composeDir, runtimeComposeFile, projectName); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to start plugin", "details": err.Error()})
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{
+			"message":     "plugin started",
+			"slug":        slug,
+			"projectName": projectName,
+		})
+	}
+}
+
+// stopPlugin stops the containers for a plugin without removing them.
+// POST /plugin/:id/stop
+func (h *PluginUploadHandler) stopPlugin() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		pluginID := c.Param("id")
+		if pluginID == "" {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "missing plugin id"})
+			return
+		}
+
+		slug := sanitizeSlug(pluginID)
+		if slug == "" {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid plugin id"})
+			return
+		}
+
+		pluginRoot := h.config.PluginDirectory
+		if strings.TrimSpace(pluginRoot) == "" {
+			pluginRoot = "./plugins"
+		}
+
+		pluginDir := filepath.Join(pluginRoot, slug)
+		composeDir, _, err := findComposeFile(pluginDir)
+		if err != nil {
+			c.JSON(http.StatusNotFound, gin.H{"error": "plugin not found", "details": err.Error()})
+			return
+		}
+
+		runtimeComposeFile := "docker-compose.runtime.yml"
+		projectName := "hotelhub-plugin-" + slug
+
+		if err := services.DockerComposeStop(composeDir, runtimeComposeFile, projectName); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to stop plugin", "details": err.Error()})
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{
+			"message":     "plugin stopped",
+			"slug":        slug,
+			"projectName": projectName,
+		})
+	}
+}
+
+// deletePlugin stops and removes all containers, networks, volumes, and files for a plugin.
+// DELETE /plugin/:id
+func (h *PluginUploadHandler) deletePlugin() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		pluginID := c.Param("id")
+		if pluginID == "" {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "missing plugin id"})
+			return
+		}
+
+		slug := sanitizeSlug(pluginID)
+		if slug == "" {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid plugin id"})
+			return
+		}
+
+		pluginRoot := h.config.PluginDirectory
+		if strings.TrimSpace(pluginRoot) == "" {
+			pluginRoot = "./plugins"
+		}
+
+		pluginDir := filepath.Join(pluginRoot, slug)
+		composeDir, _, err := findComposeFile(pluginDir)
+		if err != nil {
+			// Plugin files might not exist, but try to clean up docker resources anyway
+			log.Printf("[deletePlugin] compose file not found for %s, attempting docker cleanup anyway", slug)
+		}
+
+		runtimeComposeFile := "docker-compose.runtime.yml"
+		projectName := "hotelhub-plugin-" + slug
+
+		// Stop and remove containers (ignore errors if already removed)
+		if composeDir != "" {
+			if err := services.DockerComposeDown(composeDir, runtimeComposeFile, projectName); err != nil {
+				log.Printf("[deletePlugin] docker compose down failed: %v", err)
+				// Continue anyway to clean up files
+			}
+		}
+
+		// Remove plugin directory and all files
+		if err := os.RemoveAll(pluginDir); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to remove plugin files", "details": err.Error()})
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{
+			"message":     "plugin deleted",
+			"slug":        slug,
+			"projectName": projectName,
+		})
+	}
 }
