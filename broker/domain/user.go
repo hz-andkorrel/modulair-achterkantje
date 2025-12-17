@@ -14,7 +14,12 @@ type User struct {
 }
 
 // Compare a given password with the stored password hash.
+// If the password of the user has not been set yet, this will always return false.
 func (user *User) ValidatePassword(password string) bool {
+	if user.PasswordHash == "" {
+		return false
+	}
+
 	return bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(password)) == nil
 }
 

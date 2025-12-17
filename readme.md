@@ -8,13 +8,6 @@ This allows plugins to respond to each other's events without direct dependencie
 
 ## Development Environment
 
-The development environment is containerized using Docker Compose only.
-This allows for easy setup and teardown of the development environment, including extra tools.
-One of these tools is `pgadmin`, a web-based database management tool for PostgreSQL.
-
-
-### Running the Development Environment
-
 The development environment can be started using Docker Compose.
 It uses the `compose.dev.yml` configuration file.
 The containers are configured to build the application internally through volumes.
@@ -34,9 +27,19 @@ This mean that it might be necessary to grant permission from the host machine i
 sudo chown -R 5050:5050 data/pgadmin_dev
 ```
 
-### Maintaining the database
 
-To **recreate the database** and start fresh, the folder `data/postgres_dev` should be deleted.
+## The database
+
+The backend uses a Postgres database to store its data.
+The database schema is initialized during the startup of the `postgres` container.
+The initializations scripts are located it the `migrations` folder.
+During debugging, the `data/postgres_dev` folder is mounted as a volume,
+in production this shifts to `data/postgres`.
+
+
+### Refreshing the database
+
+To remove the current setup for the database, remove the folder `data/postgres_dev` of `data/postgres`.
 Emptying this folder is not sufficient, as Postgres keeps some metadata files that will prevent a clean start.
 
 
@@ -48,7 +51,35 @@ The default login credentials are: `admin@admin.com` and password `admin`.
 From this point, a new server connection can be created to connect to the Postgres database.
 
 
-### Authentication and Authorization
+
+## Initialization
+
+The backend requires some initial setup before it can be used. 
+This can be achieved by sending a POST request to the `/initialize` endpoint.
+This endpoint sets up the initial administrator user and configures basic information.
+An example request body for initialization is as follows:
+
+```json
+{
+    "hotel_name": "Superior Hotel",
+    "admin_name": "Admin McAdminface",
+    "admin_email": "admin@superior-hotel.net",
+    "admin_password": "strong_password_123"
+}
+```
+
+A successful initialization will return a 200 status code.
+It will also login the newly created administrator user and provide a JWT token in the response body.
+See the Authentication section for more information on how the token is returned.
+
+
+## Authentication and User Management
+
+The backend provides endpoints for authentication and user management.
+This sections of the documentation is divided into two parts, reflecting the `/auth` and `/user` endpoints.
+
+
+### Authentication and Authorization (/auth)
 
 The backend uses JWT (JSON Web Tokens) for authentication and authorization.
 Users can log in using their credentials, and upon successful authentication, they receive a JWT token.
@@ -86,10 +117,13 @@ The process is initiated by sending a DELETE request to the `/auth` endpoint.
 The process changes the revoked status of the token in the database to true.
 
 
-### User Management
+### User Management (/user)
+
+#### Creating a user
 
 User management is handled through the `/user` endpoint.
 New users can be created by sending a POST request to this endpoint with the user's details in the request body.
+Only administrators are authorized to create new users.
 The request body should be in JSON format and include `email`, `name` and `role`.
 The role can be either `admin` or `user`, the email should be a valid email address.
 Example request body for creating a new user:
@@ -108,4 +142,35 @@ A successful response will return a 201 code along with the created user's email
 
 ```
 test@tester.com
+```
+
+#### Setting and resetting a user's password
+
+The user should request a password reset to set their password before logging in.
+This is done through the `/auth` endpoint with a PUT request containing the user's email in the request body.
+Example request body for requesting a password reset:
+
+```json
+{
+    "email": "test@tester.com"
+}
+```
+
+The response will be a 200 code if the request is successful.
+The body will contain a reset token that the user can use to set their password.
+
+```json
+{
+    "reset_token": "reset.token.here"
+}
+```
+
+To set a password, a PUT request should be sent to the `/user` endpoint.
+The body should only contain the new password, since the request token is passed as a query parameter.
+The response will be a 200 code if the password is successfully set.
+
+```json
+{
+    "password": "new_secure_password"
+}
 ```

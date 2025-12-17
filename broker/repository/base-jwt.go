@@ -8,6 +8,7 @@ import (
 // It can add, validate and delete tokens
 type BaseJwtRepository interface {
 	Add(token, subject string, expiresAt time.Time) bool
-	IsValid(token string) bool
+	AddResetToken(token, subject string, expiresAt time.Time) bool
+	IsValid(token string, tokenType string) bool
 	Delete(token string) bool
 }
