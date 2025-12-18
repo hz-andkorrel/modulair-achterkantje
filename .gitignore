@@ -19,3 +19,4 @@ Thumbs.db
 
 # Persistent storage for the application should not be committed.
 data/
+plugins/

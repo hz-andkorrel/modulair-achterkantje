@@ -13,4 +13,11 @@ type Plugin struct {
 	SettingsRoute string   `json:"settings-route"`
 	APIRoutes     []string `json:"api-routes"`
 	Enabled       bool     `json:"enabled"`
+
+	// ContainerID stores the identifier of the container instance running this plugin.
+	// It is set when the plugin container is created/started and is not exposed via JSON.
+	ContainerID string `json:"-"`
+	// ImageName stores the name (and optionally tag) of the container image used for this plugin.
+	// It should be populated when the plugin image is selected or pulled, and is internal-only.
+	ImageName   string `json:"-"`
 }
