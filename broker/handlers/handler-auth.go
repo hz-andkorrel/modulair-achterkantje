@@ -24,16 +24,16 @@ func NewAuthHandler(repository *repository.RepositoryStrategy) BaseHandler {
 // RegisterRoutes registers the authentication routes with the provided Gin engine.
 // The auth endpoint supports login (POST) and logout (DELETE) operations.
 func (handler *AuthHandler) RegisterRoutes(engine *gin.Engine, jwtService *services.JwtService) {
-	engine.POST("/auth", handler.login(jwtService))
+	engine.POST("/auth/login", handler.login(jwtService))
 	engine.PUT("/auth", handler.resetPassword(jwtService))
-	engine.DELETE("/auth", middleware.JwtMiddleware(jwtService, handler.repository, "user", "access"), handler.logout())
+	engine.DELETE("/auth/logout", middleware.JwtMiddleware(jwtService, handler.repository, "user", "access"), handler.logout())
 }
 
 // The login handler processes user login requests.
 // It should validate user credentials and issue a JWT token upon successful authentication.
 func (handler *AuthHandler) login(jwtService *services.JwtService) gin.HandlerFunc {
 	type LoginRequest struct {
-		Username string `json:"username" binding:"required"`
+		Username string `json:"email" binding:"required"`
 		Password string `json:"password" binding:"required"`
 	}
 
